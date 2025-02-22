@@ -107,6 +107,4 @@ friendship-network/
 ├── vite.config.js        # Vite 配置文件
 └── README.md             # 项目说明文档
 ```
-## 开发与贡献
-欢迎提交 Pull Request 或 Issue 来贡献代码或报告问题。
 
