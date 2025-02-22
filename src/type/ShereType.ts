@@ -1,0 +1,17 @@
+export interface shareMenuType{
+    label: string;
+    key: string;
+    router: string;
+    ip?:string;
+    port?:number;
+    local:boolean;
+    mac?:string;
+}
+export interface shareDataType{
+    label: string;
+    ip: string;
+    name:string;
+    port:number;
+    status:boolean;
+    mac?:string;
+}

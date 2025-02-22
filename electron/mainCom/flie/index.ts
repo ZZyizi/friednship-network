@@ -1,0 +1,82 @@
+import electron, {dialog} from "electron";
+// import * as path from "path";
+import {FileInter} from "../../../src/api/medium/type.ts";
+import {
+    findAllMusicFiles,
+    loadCacheFromFile,
+    saveCacheToFile,
+} from "../../common/file/searchFile.ts";
+// import {fileURLToPath} from "node:url";
+import fs from "fs/promises";
+import {CACHE_FILE_PATH, SETTINGS_FILE_PATH} from "../../main.ts";
+
+// const __dirname = path.dirname(fileURLToPath(import.meta.url))
+// const CACHE_FILE_PATH = path.join(__dirname, 'cache/fileCache.json');//缓存文件路径
+// const SETTINGS_FILE_PATH = path.join(__dirname, 'cache/config.json');
+
+function writeFile(_:electron.IpcMainEvent,data:string){
+    console.log(data)
+}
+function readFile(){
+    return "asdads";
+}
+async function searchFile(_: electron.Event) {
+
+}
+async function startScan(_: electron.Event,scanPaths:string){
+    console.log("开始扫描",scanPaths)
+    if (scanPaths && scanPaths.length > 0) {
+        try{
+            const data=await findAllMusicFiles(JSON.parse(scanPaths))
+            saveCacheToFile(CACHE_FILE_PATH,data)
+            return { success: true ,message:`扫描到了${data.length}个媒体文件` }
+        }catch (error) {
+            console.error('扫描失败:', error)
+            return { success: false,message:"扫描失败" }
+        }
+    }else return {success:false,message:"文件目录不能为空"}
+}
+async function selectDirectory(){
+    try {
+        return await dialog.showOpenDialog({
+            properties: ['openDirectory'], // 只允许选择文件夹
+            title: '选择文件夹',
+            buttonLabel: '选择此文件夹',
+            message: '请选择不为空的文件夹'
+        })
+    } catch (error) {
+        console.error('选择目录失败:', error)
+        throw error
+    }
+}
+async function loadFileCache(_: electron.Event,key:string): Promise<FileInter[] | null>{
+    if (!key) return null;
+    return await loadCacheFromFile(CACHE_FILE_PATH,key);
+}
+async function saveSettings(_:electron.Event,data:any){
+    try {
+        await fs.writeFile(SETTINGS_FILE_PATH, JSON.stringify(data, null, 2))
+        return { success: true }
+    } catch (error) {
+        console.error('保存设置失败:', error)
+        return { success: false }
+    }
+}
+async function loadSettings(){
+    try {
+        const data = await fs.readFile(SETTINGS_FILE_PATH, 'utf-8')
+        return JSON.parse(data)
+    } catch (error) {
+        // 如果文件不存在，返回默认设置
+        if ((error as NodeJS.ErrnoException).code === 'ENOENT') {
+            return null
+        }
+        console.error('读取设置失败:', error)
+        return null
+    }
+}
+export {
+    writeFile, readFile, startScan, searchFile,
+    selectDirectory, loadSettings, saveSettings,
+    loadFileCache
+}

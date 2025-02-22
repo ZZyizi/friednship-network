@@ -1,0 +1,32 @@
+{
+  "compilerOptions": {
+    "target": "ES2020",
+    "useDefineForClassFields": true,
+    "module": "ESNext",
+    "lib": ["ES2020", "DOM", "DOM.Iterable"],
+    "skipLibCheck": true,
+    "baseUrl": ".",
+//    "paths": {
+//      "@/*": ["src/*"]
+//    },
+//    "outDir": "./dist-electron", // 输出目录
+    /* Bundler mode */
+    "moduleResolution": "Node",// 模块解析策略
+    "allowImportingTsExtensions": true,
+    "resolveJsonModule": true,
+    "isolatedModules": true,
+    "noEmit": true,
+    "jsx": "preserve",
+    "exclude": ["node_modules"],
+    /* Linting */
+    "strict": true,
+    "noUnusedLocals": true,
+    "noUnusedParameters": true,
+    "noFallthroughCasesInSwitch": true,
+    "allowSyntheticDefaultImports": true
+  },
+  "include": ["src/**/*", "src/**/*.tsx","src/**/*.vue", "electron/**/*",
+    "electron/common/**/*.ts"
+  ],
+  "references": [{ "path": "./tsconfig.node.json" }]
+}

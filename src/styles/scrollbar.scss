@@ -1,0 +1,61 @@
+/* 统一的滚动条基础样式 */
+@mixin scrollbar-style {
+  &::-webkit-scrollbar {
+    width: 6px;
+    height: 6px;
+  }
+
+  &::-webkit-scrollbar-thumb {
+    background-color: var(--el-scrollbar-bg-color, rgba(144, 147, 153, 0.3));
+    border-radius: 4px;
+    transition: all 0.2s ease-in-out;
+    
+    &:hover {
+      background-color: var(--el-scrollbar-hover-bg-color, rgba(144, 147, 153, 0.5));
+    }
+  }
+
+  &::-webkit-scrollbar-track {
+    background-color: transparent;
+  }
+
+  /* Firefox 滚动条样式 */
+  scrollbar-width: thin;
+  scrollbar-color: var(--el-scrollbar-bg-color, rgba(144, 147, 153, 0.3)) transparent;
+}
+
+/* 隐藏滚动条但保持功能 */
+@mixin hide-scrollbar {
+  &::-webkit-scrollbar {
+    width: 0;
+    height: 0;
+  }
+  
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
+
+/* 窄滚动条样式 */
+@mixin thin-scrollbar {
+  @include scrollbar-style;
+  
+  &::-webkit-scrollbar {
+    width: 4px;
+    height: 4px;
+  }
+}
+
+/* 悬停显示滚动条 */
+@mixin hover-scrollbar {
+  @include scrollbar-style;
+  
+  &::-webkit-scrollbar-thumb {
+    opacity: 0;
+  }
+
+  &:hover {
+    &::-webkit-scrollbar-thumb {
+      opacity: 1;
+    }
+  }
+} 

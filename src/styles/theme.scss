@@ -1,0 +1,45 @@
+/* 统一定义颜色变量 */
+:root {
+  --el-color-primary: #409eff; // Element Plus 主色
+  --bg-container:linear-gradient(135deg, #f6f8fc, #e9eef6);
+  --color-container: #2c3e50;
+  --glass-effect-bg:rgba(255, 255, 255, 0.85);
+  --border-color-effect: rgba(255, 255, 255, 0.9);
+  --item-bg: rgba(255, 255, 255, 0.6);
+  --item-hover-bg:rgba(255, 255, 255, 0.9);
+  --music-details-span:rgba(0, 0, 0, 0.04);
+  --music-details-span-color: #666;
+  --text-secondary: #666;
+  --bg-color: #ffffff;
+  --text-color: #2c3e50;
+  --search-input-bg: rgba(255, 255, 255, 0.8);
+  --scrollbar-bg: rgba(0, 0, 0, 0.05);
+  --scrollbar-thumb: rgba(0, 0, 0, 0.1);
+
+}
+
+/* 深色模式 */
+.dark {
+  --el-color-primary: #42b983; // 你可以自定义
+  --bg-container:#1e1e1e;
+  --color-container: #1e1e1e;
+  --glass-effect-bg:rgba(30, 30, 30, 0.85);
+  --border-color-effect: rgba(255, 255, 255, 0.1);
+  --item-bg: rgba(40, 40, 40, 0.6);
+  --item-hover-bg: rgba(50, 50, 50, 0.9);
+  --music-details-span:rgba(255, 255, 255, 0.04);
+  --music-details-span-color: #999;
+  --text-secondary: #a0a0a0;
+  --bg-color: #121212;         // 深色背景
+  --text-color: #e0e0e0;       // 浅色文本
+  --search-input-bg: rgba(255, 255, 255, 0.05);
+  --scrollbar-bg: rgba(255, 255, 255, 0.05);
+  --scrollbar-thumb: rgba(255, 255, 255, 0.1);
+}
+
+/* 应用于整个应用 */
+body {
+  background-color: var(--bg-color);
+  color: var(--text-color);
+  transition: background-color 0.3s, color 0.3s;
+}
