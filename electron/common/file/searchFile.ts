@@ -5,23 +5,8 @@ import {parseFile} from 'music-metadata';
 import {configType} from "../../type/config.ts";
 import {SETTINGS_FILE_PATH, CACHE_FILE, CACHE_FILE_PATH, CACHE_DATA, ffmpeg_path} from "../../main.ts";
 import fsOld from "fs/promises";
-// import {fileURLToPath} from "node:url";
 import ffmpeg from 'fluent-ffmpeg';
 import crypto from 'crypto';
-
-// 获取当前文件路径
-// const __dirname = path.dirname(fileURLToPath(import.meta.url));
-
-// 直接指定 ffmpeg 二进制路径（假设 ffmpeg-static 安装在 node_modules）
-// const ffmpegPath =
-// 设置 ffmpeg 路径
-// if (ffmpegStatic) {
-//     ffmpeg.setFfmpegPath(
-//         app.isPackaged
-//             ? path.join(process.resourcesPath, 'ffmpeg') // 生产环境路径
-//             : ffmpegStatic // 开发环境直接使用 node_modules 中的路径
-//     );
-// }
 
 // 定义音乐文件的扩展名
 export const musicType = ['.mp3', '.wav', '.flac', '.aac', '.m4a', '.ogg', '.wma', '.ape', '.aiff', '.aif', '.aifc', '.mka', '.wv', '.opus', '.mka', '.m4b', '.m4p', '.m4r', '.m4v', '.mpc', '.mp+', '.mpp', '.mp+'];
@@ -71,8 +56,8 @@ const findMusicFiles = async (dir: string, musicFiles: FileInter[] = []): Promis
                         artist:MusicInfo.artist,
                         lyrics:MusicInfo.lyrics,
                         picture:MusicInfo.picture,
-                        resolution:MusicInfo?.resolution
-                    }
+                        resolution:MusicInfo.resolution
+            }
                 });
             }
         }
@@ -94,9 +79,7 @@ const findAllMusicFiles = async (drives: string[] | undefined): Promise<FileInte
     }
     let allMusicFiles: FileInter[] = [];
 
-    // const dataPath= path.join(CACHE_FILE,'data')
-    // await deleteFile(dataPath)//先删除
-    await ensureFileExistsData(CACHE_DATA)//再创建
+    await ensureFileExistsData(CACHE_DATA)//创建
     count=0
     for (const drive of drives) {
         console.log(`正在扫描: ${drive}`);
@@ -189,6 +172,7 @@ async function getMusicMetadata(filePath: string) {
         album:"未知",
         lyrics:[],
         picture:null,
+        resolution:null
     };//音频信息
     try {
         let picture=null;//音频封面
@@ -206,7 +190,9 @@ async function getMusicMetadata(filePath: string) {
             if (videoType.includes(path.extname(filePath))) {
                 const data:any = await getVideoFrame(filePath,fileName)
                 picture=data.url;
-                resolution=data.quality
+                if(data.quality.length>0){
+                    resolution=data.quality
+                }
             }
         }
         musicInfo={
@@ -307,7 +293,6 @@ export async function ensureFileExistsData(filePath: string) {
 //转存本地
 async function saveBase64Image(base64Data:string|null,fileName:string,extension = 'jpg') {
     if (!base64Data) return null;
-    // const dataPath= path.join(CACHE_FILE,'data')
     if (fs.existsSync(`${CACHE_DATA}\\${fileName}.jpg`)) return `${CACHE_DATA}\\${fileName}.jpg`;
     try {
         // 去掉 Base64 前缀（如果有）
@@ -347,12 +332,12 @@ async function getConfigData() {
 }
 async function getVideoFrame(videoPath: string, fileName: string) {
     ffmpeg.setFfmpegPath(ffmpeg_path as string);
-    // const dataPath = path.join(CACHE_FILE, 'data');
-    const result = {
+    let result = {
         url: path.join(CACHE_DATA, `${fileName}.jpg`), // 改用 JPEG 格式
         quality: ''
     };
-
+    const data=await getCacheData(result.url)
+    result.quality=data?.info?.resolution||'未知'
     if (fs.existsSync(result.url)) return result;
 
     return new Promise((resolve, reject) => {
@@ -410,6 +395,7 @@ async function getFileKey(filePath:string) {
     await fd.close();
     return hash.digest('hex');
 }
+
 //清理缓存
 async function cleanCache() {
     console.time("清理缓存")
@@ -418,6 +404,8 @@ async function cleanCache() {
         const fileData= await loadCacheFromFile(CACHE_FILE_PATH,'all')
         const pngName:string[]=[]
         let data:string[]=[];
+        let size:number=0;
+        let promises:any=[]
         //扫描所有的png
         const files = fs.readdirSync(dataPath);
         for (const file of files) {
@@ -434,16 +422,23 @@ async function cleanCache() {
         data.forEach((item)=>{
             if (!pngName) return;
             if(!pngName.includes(item)){
-                fs.promises.stat(item).then(stat => {
-                    console.log(`清理缓存成功,清理${stat.size}字节`)
+                let promise = fs.promises.stat(item).then(stat => {
+                    size += stat.size / 1024;
                 });
+                promises.push(promise);
                 fs.unlinkSync(item)
             }
         })
-
+        Promise.all(promises).then(() => {
+            console.log(`清理缓存成功,清理${parseInt(String(size))}kb`)
+            console.timeEnd("清理缓存")
+        });
     }catch (err:any){
         throw err;
     }
-    console.timeEnd("清理缓存")
+}
+async function getCacheData(url: string) {
+    const fileData = await loadCacheFromFile(CACHE_FILE_PATH, 'video')
+    return fileData?.find((item) => item.info?.picture === url)
 }
 export { findAllMusicFiles, saveCacheToFile,loadCacheFromFile, createDir,getConfigData,configData,cleanCache }

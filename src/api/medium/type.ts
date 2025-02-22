@@ -20,5 +20,5 @@ export interface  MusicInfo {
     duration: number;
     picture: string|null;
     quality: string;
-    resolution?:string|null;
+    resolution:string|null;
 }

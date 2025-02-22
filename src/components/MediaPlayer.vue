@@ -9,8 +9,22 @@
     align-center
   >
     <div class="player-container">
-      <div class="player-content"  v-show="isVideo">
-        <video
+      <div v-if="isVideo">
+        <div class="player-content">
+          <video
+              ref="mediaRef"
+              class="media-element"
+              @timeupdate="onTimeUpdate"
+              @loadedmetadata="onLoadedMetadata"
+              @ended="onEnded"
+              @error="onError"
+              :src="broadcast_url"
+              :poster="currentMedia?.info?.picture?currentMedia.info.picture:''"
+          ></video>
+        </div>
+      </div>
+      <div v-else>
+        <audio
             ref="mediaRef"
             class="media-element"
             @timeupdate="onTimeUpdate"
@@ -18,9 +32,10 @@
             @ended="onEnded"
             @error="onError"
             :src="broadcast_url"
-            :poster="currentMedia?.info?.picture?currentMedia.info.picture:''"
-        ></video>
+        >
+        </audio>
       </div>
+
 
       <div class="media-info" v-if="!isVideo">
         <img v-if="currentMedia?.info?.picture" :src="currentMedia.info.picture" class="media-cover" alt="封面">

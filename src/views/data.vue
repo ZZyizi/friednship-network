@@ -105,7 +105,6 @@
 import {computed, onBeforeUnmount, onMounted, reactive, ref} from 'vue'
 import {reqFileData, reqShare} from "../api/medium";
 import {FileInter} from "../api/medium/type.ts";
-import {ElMessage} from 'element-plus';
 import {Search, Setting, Share, VideoPause, VideoPlay} from '@element-plus/icons-vue'
 import SettingsDialog from "../components/SettingsDialog.vue";
 import {loading} from "../util/loadIng.ts";
@@ -296,8 +295,8 @@ const playNext = () => {
   }
 }
 
-const handlePlayError = (error: any) => {
-  ElMessage.error('播放出错：' + error.message)
+const handlePlayError = (_: any) => {
+  playNext()
 }
 </script>
 

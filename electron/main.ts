@@ -11,29 +11,25 @@ import {
     saveCacheToFile
 } from './common/file/searchFile.ts'
 
-// import ffmpegStatic from 'ffmpeg-static'
-// console.log(ffmpegStatic)
 const __dirname = path.dirname(fileURLToPath(import.meta.url))
 global.__dirname = __dirname;
-// let serverProcess;
 process.env.LANG = 'en_US.UTF-8';
 process.env.APP_ROOT = path.join(__dirname, '..')
-export const cache_build= path.join(app.getPath('userData'), 'Cache');//缓存文件夹路径
-export const cache_cache_build= path.join(app.getPath('userData'), 'Cache/cache.json');//缓存文件路径
-export const cache_data_build= path.join(app.getPath('userData'), 'Cache/data');//data路径
-export const cache_file_path_build= path.join(app.getPath('userData'), 'Cache/fileCache.json');//file路径
+export const cache_build= path.join(app.getPath('userData'), 'media_data');//缓存文件夹路径
+export const cache_cache_build= path.join(app.getPath('userData'), 'media_data/cache.json');//缓存文件路径
+export const cache_data_build= path.join(app.getPath('userData'), 'media_data/data');//data路径
+export const cache_file_path_build= path.join(app.getPath('userData'), 'media_data/fileCache.json');//file路径
 // export const ffmpeg_build= path.join(__dirname,'..','app.asar.unpacked','node_modules','ffmpeg-static','ffmpeg.exe');//ffmpeg路径
 export const VITE_DEV_SERVER_URL = process.env['VITE_DEV_SERVER_URL']
 
 // 生成 ffmpeg.exe 的路径
 export const ffmpeg_asar_path = path.join(process.resourcesPath, '../ffmpeg.exe');
-// export const ffmpeg_path =ffmpegStatic
-export const ffmpeg_path=ffmpeg_asar_path
+export const ffmpeg_asar_path_dev = path.join(__dirname,'..', 'libs/ffmpeg-static/ffmpeg');
+export const ffmpeg_path=VITE_DEV_SERVER_URL?ffmpeg_asar_path_dev:ffmpeg_asar_path
 export const SETTINGS_FILE_PATH =VITE_DEV_SERVER_URL ? path.join(__dirname, 'cache/config.json'):cache_cache_build;//配置文件路径
 // export const MAIN_DIST = path.join(process.env.APP_ROOT, 'dist-electron')
 export const RENDERER_DIST = path.join(process.env.APP_ROOT, 'dist')
 process.env.VITE_PUBLIC = VITE_DEV_SERVER_URL ? path.join(process.env.APP_ROOT, 'public') : RENDERER_DIST
-// console.log('Loading HTML from:', path.join(RENDERER_DIST, 'index.html'));
 // JSON 文件路径，用于保存缓存
 export const CACHE_FILE_PATH =VITE_DEV_SERVER_URL? path.join(__dirname, 'cache/fileCache.json'):cache_file_path_build;//缓存文件路径
 export const CACHE_FILE=VITE_DEV_SERVER_URL? path.join(__dirname, 'cache'):cache_build;//缓存文件夹路径
@@ -56,7 +52,6 @@ function createWindow() {
      ensureFileExistsData(CACHE_DATA)//创建cache/data文件夹
      mainCom()//主进程通讯
      cleanCache()
-    // Test active push message to Renderer-process.
   win.webContents.on('did-finish-load', () => {
     win?.webContents.send('main-process-message', (new Date).toLocaleString())
     win?.webContents.send('theme-changed', nativeTheme.shouldUseDarkColors);
@@ -66,9 +61,9 @@ function createWindow() {
         if (input.type === 'keyDown' && (input.key === 'F5' || (input.control && input.key === 'r'))) {
             event.preventDefault();
         }
-        if (input.type === 'keyDown' && (input.key === 'F12' || (input.control && input.shift && input.key === 'I'))) {
-            event.preventDefault();
-        }
+        // if (input.type === 'keyDown' && (input.key === 'F12' || (input.control && input.shift && input.key === 'I'))) {
+        //     event.preventDefault();
+        // }
         if (input.type === 'keyDown' && input.key === 'Alt') {
             event.preventDefault();
         }

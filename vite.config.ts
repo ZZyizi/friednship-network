@@ -8,7 +8,6 @@ import {fileURLToPath} from "node:url";
 import AutoImport from 'unplugin-auto-import/vite'
 import Components from 'unplugin-vue-components/vite'
 import { ElementPlusResolver } from 'unplugin-vue-components/resolvers'
-
 // 获取网络接口信息
 const networkInterfaces = os.networkInterfaces();
 let Ip=""
