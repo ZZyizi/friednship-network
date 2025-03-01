@@ -38,7 +38,7 @@
 ### 前提条件
 
 - [Node.js](https://nodejs.org/)（建议版本 v16 或以上）
-- [cnpm](https://www.cnpmjs.com/) 或 [yarn](https://yarnpkg.com/)
+- [cnpm](https://www.cnpmjs.com/)
 
 ### 安装步骤
 
