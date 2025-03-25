@@ -7,4 +7,6 @@ export interface configType{
     scanOnStartup?:boolean,// 开机自启
     scanInterval?:number,// 扫描间隔
     theme?:string,// 主题
+    minimization?: boolean,
+    showTray?: boolean
 }

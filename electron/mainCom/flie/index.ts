@@ -1,18 +1,12 @@
 import electron, {dialog} from "electron";
-// import * as path from "path";
 import {FileInter} from "../../../src/api/medium/type.ts";
 import {
     findAllMusicFiles,
     loadCacheFromFile,
-    saveCacheToFile,
+    saveCacheToFile, saveConfigData,
 } from "../../common/file/searchFile.ts";
-// import {fileURLToPath} from "node:url";
 import fs from "fs/promises";
 import {CACHE_FILE_PATH, SETTINGS_FILE_PATH} from "../../main.ts";
-
-// const __dirname = path.dirname(fileURLToPath(import.meta.url))
-// const CACHE_FILE_PATH = path.join(__dirname, 'cache/fileCache.json');//缓存文件路径
-// const SETTINGS_FILE_PATH = path.join(__dirname, 'cache/config.json');
 
 function writeFile(_:electron.IpcMainEvent,data:string){
     console.log(data)
@@ -55,7 +49,7 @@ async function loadFileCache(_: electron.Event,key:string): Promise<FileInter[] 
 }
 async function saveSettings(_:electron.Event,data:any){
     try {
-        await fs.writeFile(SETTINGS_FILE_PATH, JSON.stringify(data, null, 2))
+        await saveConfigData(data)
         return { success: true }
     } catch (error) {
         console.error('保存设置失败:', error)

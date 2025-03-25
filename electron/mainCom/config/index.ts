@@ -1,15 +1,17 @@
 import os from 'node:os'
-// import path from "node:path";
-// import {fileURLToPath} from "node:url";
 import electron, {nativeTheme,clipboard } from "electron";
 import {startServer} from "../../services.ts";
 import {configData, getConfigData} from "../../common/file/searchFile.ts";
 import {getLocalDevices} from "../../common/network";
 import {CACHE_FILE_PATH} from "../../main.ts";
+import {isServerRunning, setIsServerRunning} from "../../main/tray";
 
 let expressServer:any=null
-// const __dirname = path.dirname(fileURLToPath(import.meta.url))
-// const CACHE_FILE_PATH = path.join(__dirname, 'cache/fileCache.json');//缓存文件路径
+
+export function setServerRunning(expressServerT:any){
+    expressServer=expressServerT
+}
+
 function getIp(){
     // 获取网络接口信息
     const networkInterfaces = os.networkInterfaces();
@@ -33,6 +35,7 @@ async function start(_: electron.Event,data:number) {
             if(expressServer){
                 expressServer.close()
                 expressServer = null
+                setIsServerRunning(false,expressServer)
                 return {success:false, message:"服务已关闭"}
             }
            return {success:false, message:"服务未启动"}
@@ -44,6 +47,7 @@ async function start(_: electron.Event,data:number) {
         }
         if (!expressServer){
             expressServer = await startServer(port,CACHE_FILE_PATH)
+            setIsServerRunning(true,expressServer)
             return {success:true, message:`启动成功 port:${expressServer.address().port}`}
         }
         return {success:true, message:`服务已经启动 port:${expressServer.address().port}`}
@@ -58,8 +62,11 @@ async function theme(){
 async function getLoadNet(){
     return await getLocalDevices()
 }
+async function getStartServer(){
+    return isServerRunning;
+}
 // 写入剪贴板
 function copy(_: electron.Event, textToCopy:string){
     clipboard.writeText(textToCopy.toString());
 }
-export { getIp, start, theme, copy,getLoadNet }
+export { getIp, start, theme, copy,getLoadNet,getStartServer }

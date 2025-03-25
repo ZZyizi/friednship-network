@@ -161,7 +161,9 @@ let settings = reactive<Settings>({
   autoPlay: false,          // 自动播放
   defaultVolume: 80,       // 默认音量
   rememberLastPlayed: false, // 记住上次播放位置
-  scanPaths: []// 扫描路径列表
+  scanPaths: [], // 扫描路径列表
+  showTray:true, //是否启动托盘
+  minimization:true //是否关闭页面最小化
 })
 let counter:number=0//计数器
 const { setTheme } = useTheme(); //深色模式
@@ -175,6 +177,26 @@ let menuItem=reactive<MenuItem[]>([
     title: '基础设置',
     icon: "Setting",
     index: "basic",
+    isElectron:true,
+    child:[
+      {
+        key: "showTray",
+        label: "启动系统托盘",
+        component: markRaw(ElSwitch),
+        props: {},
+      },
+      {
+        key: "minimization",
+        label: "启动窗口最小化",
+        component: markRaw(ElSwitch),
+        props: {},
+      },
+    ]
+  },
+  {
+    title: '播放设置',
+    icon: "VideoPlay",
+    index: "broadcast",
     isElectron:false,
     child:[
       {
@@ -187,7 +209,7 @@ let menuItem=reactive<MenuItem[]>([
         key: "defaultVolume",
         label: "默认音量",
         component: markRaw(ElSlider),
-        props: { min: 0, max: 100, step: 1, "show-input": true },
+        props: { min: 0, max: 100, step: 1, "show-input": false },
       },
       {
         key: "rememberLastPlayed",
@@ -353,6 +375,8 @@ const saveSettings = async () => {
       defaultVolume: settings.defaultVolume,
       rememberLastPlayed: settings.rememberLastPlayed,
       scanPaths: settings.scanPaths?.slice() || [],
+      minimization: settings.minimization,
+      showTray: settings.showTray,
     };
     settingsStore.updateSettings(settingsToSave)
     settingsStore.updateSettings(settings)

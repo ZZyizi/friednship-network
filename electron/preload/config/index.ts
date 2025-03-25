@@ -15,4 +15,8 @@ function copy(text:string){
 function getLoadNet(){
     return ipcRenderer.invoke('get-load-net');
 }
-export { getConfig, start, theme, copy, getLoadNet }
+function getStartServer(){
+    return ipcRenderer.invoke('get-start-server');
+}
+
+export { getConfig, start, theme, copy, getLoadNet, getStartServer }

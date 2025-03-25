@@ -78,7 +78,7 @@ const dialogVisible = computed({
 const loadingShare=ref(false)//数据互通表格加载中
 const settingsStore=useSettings()
 const networkStore=useNetwork()
-const { config } = window
+const { config,ipcRenderer } = window
 let port=ref(settingsStore.settings.port)
 let Ip= ref('127.0.0.1')
 let tableData = reactive([
@@ -89,10 +89,16 @@ let shareData=reactive<shareDataType[]>([])
 
 onMounted(async ()=>{
   Ip.value=await config.getConfig()
-  settingsStore.isOpen=JSON.parse(localStorage.getItem('start')||'false')
+  settingsStore.isOpen=await config.getStartServer()
   addLocal()
-  window.addEventListener("beforeunload", handleBeforeUnload);//挂载方法
+  window.addEventListener("beforeunload", handleBeforeUnload,{ passive: false });//挂载方法
 })
+
+//监听主进程
+ipcRenderer.on("update-start-server", (_, data) => {
+  settingsStore.isOpen=data.isServerRunning
+});
+
 //刷新页面时候
 onBeforeUnmount(()=>{
   window.removeEventListener("beforeunload", handleBeforeUnload);//卸载方法
@@ -108,7 +114,7 @@ watch(() => settingsStore.isOpen, () => {
 async function send(port:number){
   const data= await config.start(port)//启动web服务
   settingsStore.isOpen=data.success
-  localStorage.setItem('start',JSON.stringify(settingsStore.isOpen))
+  // localStorage.setItem('start',JSON.stringify(settingsStore.isOpen))
   if(data.success){
     ElMessage.success(data.message)
   }else {
@@ -152,7 +158,7 @@ const handleBeforeUnload = async () => {
   if (settingsStore.isOpen) {
     const data= await config.start(0)
     settingsStore.isOpen=data.success
-    localStorage.setItem('start',JSON.stringify(settingsStore.isOpen))
+    // localStorage.setItem('start',JSON.stringify(settingsStore.isOpen))
   }
 }
 //互联功能
@@ -236,9 +242,30 @@ async function link(item:shareDataType){
 .container{
   width: 100%;
   height: 300px;
-  overflow-y: scroll;
+  overflow-y: auto;
   .el-table{
     margin-top: 10px;
+  }
+}
+.container {
+  /* 菜单滚动条 */
+  &::-webkit-scrollbar {
+    width: 5px;
+    background: var(--scrollbar-bg);
+  }
+
+  &::-webkit-scrollbar-track {
+    background: var(--scrollbar-bg);
+    border-radius: 3px;
+  }
+
+  &::-webkit-scrollbar-thumb {
+    background: var(--scrollbar-thumb);
+    border-radius: 3px;
+  }
+
+  &::-webkit-scrollbar-thumb:hover {
+    background: rgba(0, 0, 0, 0.15);
   }
 }
 </style>

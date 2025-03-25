@@ -8,7 +8,7 @@ import {
   selectDirectory,
   loadFileCache, startScan
 } from "./preload/file";
-import {getConfig, start, theme, copy, getLoadNet} from "./preload/config";
+import {getConfig, start, theme, copy, getLoadNet, getStartServer} from "./preload/config";
 
 // --------- Expose some API to the Renderer process ---------
 contextBridge.exposeInMainWorld('ipcRenderer', {
@@ -45,6 +45,7 @@ contextBridge.exposeInMainWorld('config', {
   start,
   theme,
   copy,
-  getLoadNet
+  getLoadNet,
+  getStartServer
 })
 

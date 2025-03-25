@@ -5,9 +5,10 @@ import fs from "fs";
 import { basename,join } from "path";
 
 // const musicList:FileInter[]=[]//二级缓存
-export function file(appExpress:express.Express,path:string,ip:string){
+export function file(appExpress:express.Express,path:string){
     appExpress.get('/file', async (req, res) => {
         // 执行脚本
+        const clientIp = req.hostname;//获取前端请求的ip
         const key=req.query.key?.toString();
         if (!key) {res.send(null);return;}
         await getConfigData()
@@ -16,9 +17,9 @@ export function file(appExpress:express.Express,path:string,ip:string){
         data?.forEach((item)=>{
             const to= item.info?.picture
             const encodedValue = encodeURIComponent(item.Url);
-            item.Url=`http://${ip}:${port}/file/get/${item.Name}?path=${encodedValue}`
+            item.Url=`http://${clientIp}:${port}/file/get/${item.Name}?path=${encodedValue}`
             if (to&&item.info){
-                item.info.picture=item.info&&item.info.picture?`http://${ip}:${port}/img/${basename(to)}`:null;
+                item.info.picture=item.info&&item.info.picture?`http://${clientIp}:${port}/img/${basename(to)}`:null;
             }
         })
         res.send({ data })

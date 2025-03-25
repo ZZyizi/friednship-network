@@ -8,6 +8,8 @@ export interface Settings {
     defaultVolume: number;
     rememberLastPlayed: boolean;
     scanPaths: string[]; // 扫描路径列表
+    showTray:boolean;
+    minimization:boolean;
 }
 export interface MenuItem {
     title: string;

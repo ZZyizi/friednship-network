@@ -10,24 +10,20 @@ const app = express();
 // 获取网络接口信息
 const networkInterfaces = os.networkInterfaces();
 let Url:string=`http://127.0.0.1:8080`;
-let ip:string=`127.0.0.1`;
 const __dirname = path.dirname(fileURLToPath(import.meta.url))
 // 遍历网络接口信息，找到 IPv4 地址
 Object.keys(networkInterfaces).forEach(interfaceName => {
     networkInterfaces[interfaceName]?.forEach(interfaceInfo => {
         if (interfaceInfo.family === 'IPv4' && !interfaceInfo.internal) {
             Url=`http://${interfaceInfo.address}:${8080}`
-            ip=interfaceInfo.address
         }
     });
 });
-cors(app,Url)//解决跨域
-
-// const CACHE_FILE_PATH = path.join(__dirname, 'cache/fileCache.json');//缓存文件路径
+cors(app,Url)//编译环境测试 (解决跨域)
 
 export function startServer(port:number,cache_path:string) {
     hello(app)
-    file(app,cache_path,ip)
+    file(app,cache_path)
     // 设置静态文件目录
     app.use(express.static(path.join(__dirname,'..', 'dist'), {
         setHeaders: (res, path) => {

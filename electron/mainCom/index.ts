@@ -8,8 +8,8 @@ import {
     loadFileCache,
     startScan,
     searchFile
-} from "./flie/index.js";
-import {copy, getIp, getLoadNet, start, theme} from "./config/index.js";
+} from "./flie";
+import {copy, getIp, getLoadNet, getStartServer, start, theme} from "./config";
 
 function file() {
     ipcMain.on('file-save', writeFile) // 保存文件
@@ -22,13 +22,15 @@ function file() {
     ipcMain.handle('search-file',searchFile )//搜索文件
 }
 function config() {
-    ipcMain.handle('config-get',getIp)
-    ipcMain.handle('start-server',start)
-    ipcMain.handle('copy',copy)
-    ipcMain.handle('get-load-net',getLoadNet)
+    ipcMain.handle('config-get',getIp)//获取ip
+    ipcMain.handle('start-server',start)//启动/停止服务
+    ipcMain.handle('copy',copy)//复制
+    ipcMain.handle('get-load-net',getLoadNet)//获取本地文件
+    ipcMain.handle('get-start-server',getStartServer)//获取服务是否启动
 }
+
 function Theme(){
-    ipcMain.handle('theme-changed',theme)
+    ipcMain.handle('theme-changed',theme)//获取主题
 }
 
 export function mainCom(){

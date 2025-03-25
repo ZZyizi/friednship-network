@@ -126,7 +126,9 @@ async function createDir(path:string) {
             autoPlay: false,
             defaultVolume: 80,
             rememberLastPlayed: false,
-            scanPaths: []
+            scanPaths: [],
+            showTray:true,
+            minimization:true
         }), 'utf8');
     }
     // 创建fileCache.json文件
@@ -269,7 +271,9 @@ async function ensureFileExists(filePath: string) {
                 autoPlay: false,
                 defaultVolume: 80,
                 rememberLastPlayed: false,
-                scanPaths: []
+                scanPaths: [],
+                showTray:true,
+                minimization:true
             }), 'utf8');
         } else {
             throw err;
@@ -329,6 +333,11 @@ async function getConfigData() {
         configData= null
     }
 
+}
+//保存设置给内存缓存
+async function saveConfigData(data: any) {
+    configData = data //更新缓存
+    await fsOld.writeFile(SETTINGS_FILE_PATH, JSON.stringify(data, null, 2))
 }
 async function getVideoFrame(videoPath: string, fileName: string) {
     ffmpeg.setFfmpegPath(ffmpeg_path as string);
@@ -441,4 +450,4 @@ async function getCacheData(url: string) {
     const fileData = await loadCacheFromFile(CACHE_FILE_PATH, 'video')
     return fileData?.find((item) => item.info?.picture === url)
 }
-export { findAllMusicFiles, saveCacheToFile,loadCacheFromFile, createDir,getConfigData,configData,cleanCache }
+export { findAllMusicFiles, saveCacheToFile,loadCacheFromFile, createDir,getConfigData,configData,cleanCache,saveConfigData }

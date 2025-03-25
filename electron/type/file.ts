@@ -14,7 +14,8 @@ export interface configType {
     start:Function,
     theme:Function,
     copy:Function,
-    getLoadNet:Function
+    getLoadNet:Function,
+    getStartServer:Function,
 }
 export interface searchFileType {
     path:string,

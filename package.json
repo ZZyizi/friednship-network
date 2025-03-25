@@ -1,7 +1,8 @@
 {
   "name": "friendship-network",
+  "productName": "friendship-network",
   "private": true,
-  "version": "0.0.1",
+  "version": "0.0.2",
   "type": "module",
   "scripts": {
     "dev": "chcp 65001 & vite ",
@@ -69,8 +70,7 @@
     "pinia": "^3.0.1",
     "uuid": "^11.0.5",
     "vue": "^3.4.21",
-    "vue-router": "^4.5.0",
-    "ffmpeg-static": "file:libs/ffmpeg-static"
+    "vue-router": "^4.5.0"
   },
   "devDependencies": {
     "@types/cors": "^2.8.17",

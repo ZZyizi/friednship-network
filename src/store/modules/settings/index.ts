@@ -19,7 +19,8 @@ export const useSettings = defineStore(
             })
             let currentTime:number=0
             let isPlaying=ref<boolean>(false) //按钮状态
-            let isOpen=ref(JSON.parse(localStorage.getItem('start')||'false'))
+            let isOpen=false
+
             return ({
                 settings,currentTime,isPlaying,isOpen
             });

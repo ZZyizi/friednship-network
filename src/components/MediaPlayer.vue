@@ -70,11 +70,11 @@
           <div class="volume-control">
             <el-button
                 circle
-                :icon="volume === 0 ? Mute : Microphone"
+                :icon="settingsStore.settings.defaultVolume === 0 ? Mute : Microphone"
                 @click="toggleMute"
             />
             <el-slider
-                v-model="volume"
+                v-model="settingsStore.settings.defaultVolume"
                 :max="100"
                 :step="10"
                 @change="onVolumeChange"
@@ -107,24 +107,24 @@ const dialogVisible = computed({
   get: () => props.modelValue,
   set: (value) => emit('update:modelValue', value)
 })
-const emit = defineEmits(['previous', 'next', 'error','update:modelValue'])
+const emit = defineEmits(['previous', 'next', 'error','update:modelValue'])//子传父
 const settingsStore=useSettings()
 const mediaRef = ref<HTMLVideoElement | null>(null)
 const currentTime = ref(0)
 const duration = ref(0)
-const volume = ref(settingsStore.settings.defaultVolume)
 const previousVolume = ref(settingsStore.settings.defaultVolume)
-const isElectron:boolean= navigator.userAgent.includes("Electron")
+// const isElectron:boolean= navigator.userAgent.includes("Electron")
 const lastTime=localStorage.getItem("currentTime")?JSON.parse(localStorage.getItem("currentTime") as string):0
 const broadcast_url=computed(() => {
+  return props.currentMedia?.Url
   // const IP=window.location.hostname
-  if (isElectron){
-    return props.currentMedia?.Url
-  }else {
-    // const encodedValue = encodeURIComponent(props.currentMedia?.Url);
-    // return FileUrl(IP,props.currentMedia?.Name,encodedValue);
-    return props.currentMedia?.Url
-  }
+  // if (isElectron){
+  //   return props.currentMedia?.Url
+  // }else {
+  //   // const encodedValue = encodeURIComponent(props.currentMedia?.Url);
+  //   // return FileUrl(IP,props.currentMedia?.Name,encodedValue);
+  //   return props.currentMedia?.Url
+  // }
 })
 const isVideo = computed(() => {
   return props.currentMedia?.Suffix.toLowerCase().match(/\.(mp4|webm|ogg)$/)
@@ -136,8 +136,7 @@ onMounted( async ()=>{
   if (mediaRef.value) {
     // 这里可以执行你的逻辑
     if(settingsStore.settings.autoPlay && settingsStore.settings.rememberLastPlayed){
-      if (!(lastTime>=mediaRef.value.duration))
-        onSeek(lastTime);
+      if (!(lastTime>=mediaRef.value.duration)) onSeek(lastTime);
     }
   }
 })
@@ -180,6 +179,7 @@ const onLoadedMetadata = () => {
   if (settingsStore.settings.autoPlay) {
     settingsStore.isPlaying=true
     mediaRef.value.play()
+    onVolumeChange(settingsStore.settings.defaultVolume)
     return;
   }
   settingsStore.isPlaying=false
@@ -191,13 +191,13 @@ const onSeek = (value: number) => {
 }
 
 const toggleMute = () => {
-  if (volume.value === 0) {
-    volume.value =previousVolume.value
+  if (settingsStore.settings.defaultVolume === 0) {
+    settingsStore.settings.defaultVolume =previousVolume.value
   } else {
-    previousVolume.value = volume.value
-    volume.value = 0
+    previousVolume.value = settingsStore.settings.defaultVolume
+    settingsStore.settings.defaultVolume = 0
   }
-  onVolumeChange(volume.value)
+  onVolumeChange(settingsStore.settings.defaultVolume)
 }
 
 const onVolumeChange = (value: number) => {

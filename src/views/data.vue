@@ -136,13 +136,13 @@ const settingsVisible = ref(false)
 //共享相关响应式变量
 const shareVisible = ref(false)
 let count:number=0//计数器
-const MediaChildRef=ref<typeof MediaPlayer>()
+const MediaChildRef=ref<typeof MediaPlayer>()//定义组件的ref
 
 onMounted(() => {
   const key:string= router.currentRoute.value.query.key?router.currentRoute.value.query.key.toString():'all';
   update(key)
   load()
-  window.addEventListener("beforeunload", handleBeforeUnload);//挂载方法
+  window.addEventListener("beforeunload", handleBeforeUnload, { passive: false });//挂载方法
 })
 
 //刷新页面时候
