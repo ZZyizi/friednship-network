@@ -109,7 +109,7 @@ import {Search, Setting, Share, VideoPause, VideoPlay} from '@element-plus/icons
 import SettingsDialog from "../components/SettingsDialog.vue";
 import {loading} from "../util/loadIng.ts";
 import type MediaPlayer from "../components/MediaPlayer.vue";
-import {useNetwork, useSettings} from "../store";
+import {useMedia, useNetwork, useSettings} from "../store";
 import ShareDialog from "../components/ShareDialog.vue";
 import {useRouter} from "vue-router";
 
@@ -117,9 +117,9 @@ const { file } =window;
 // const UserEquipment= navigator.userAgent.match(/(phone|pad|pod|iPhone|iPod|ios|iPad|Android|Mobile|BlackBerry|IEMobile|MQQBrowser|JUC|Fennec|wOSBrowser|BrowserNG|WebOS|Symbian|Windows Phone)/i)
 const isElectron:boolean= navigator.userAgent.includes("Electron")
 const settingsStore=useSettings()
+const mediaStore=useMedia()
 const networkStore=useNetwork()
 const router=useRouter()
-let resData=reactive<FileInter[]>([])
 let playingData=reactive<FileInter>({
   Name:"",
   Url:"",
@@ -162,42 +162,40 @@ async function go(item:any) {
   if (item.local){
     await update(item.key)
   }else {
-    resData.splice(0,resData.length)
     const data:FileInter[]=await (await reqShare(item.ip,item.port,item.key)).data
-    resData.push(...uniqueArray(data));
+    mediaStore.setMediaData(data)
   }
   loading().close();
 }
 async function update(label:string){
   loading()
   let resD:FileInter[];
-  resData.splice(0,resData.length)
   if(isElectron){
     resD=await file.loadFileCache(label)
   }else {
     resD= (await reqFileData(label)).data
   }
-    // 将去重后的数据添加到 resData
-  resData.push(...uniqueArray(resD));
+  // 将去重后的数据添加到
+  mediaStore.setMediaData(resD)
   loading().close();
 }
 //去重
-function uniqueArray(arr:FileInter[]) {
-  if (arr){
-    // 使用 Set 去重，基于文件的 URL 和名称
-    const uniqueFiles = new Set();
-    return arr.filter(item => {
-      const key = `${item.Url}`;
-      if (!uniqueFiles.has(key)) {
-        uniqueFiles.add(key);
-        return true;
-      }
-      return false;
-    });
-  }else {
-    return []
-  }
-}
+// function uniqueArray(arr:FileInter[]) {
+//   if (arr){
+//     // 使用 Set 去重，基于文件的 URL 和名称
+//     const uniqueFiles = new Set();
+//     return arr.filter(item => {
+//       const key = `${item.Url}`;
+//       if (!uniqueFiles.has(key)) {
+//         uniqueFiles.add(key);
+//         return true;
+//       }
+//       return false;
+//     });
+//   }else {
+//     return []
+//   }
+// }
 // 加载记录播放功能
 function load(){
   const lastPlayed = localStorage.getItem('lastPlayed');
@@ -214,6 +212,7 @@ function parse(){
 async function change(item:FileInter,status:number=0){
   count++;
   Object.assign(playingData,item)
+
   //主动打开
   if (status===1){
     showPlayer.value = true
@@ -230,9 +229,9 @@ const pauseFunction = () =>{
 // 添加计算属性用于过滤媒体列表
 const filteredMusicList = computed(() => {
   const query = searchQuery.value.toLowerCase().trim()
-  if (!query) return resData
+  if (!query) return mediaStore.MediaData
 
-  return resData.filter(item =>
+  return mediaStore.MediaData.filter(item =>
     item.Name.toLowerCase().includes(query)
   )
 })
@@ -282,16 +281,16 @@ const formatFileSize = (bytes: number): string => {
 };
 
 const playPrevious = () => {
-  const currentIndex = resData.findIndex(item => item.Name === playingData.Name)
+  const currentIndex = mediaStore.MediaData.findIndex(item => item.Name === playingData.Name)
   if (currentIndex > 0) {
-    change(resData[currentIndex - 1])
+    change(mediaStore.MediaData[currentIndex - 1])
   }
 }
 
 const playNext = () => {
-  const currentIndex = resData.findIndex(item => item.Name === playingData.Name)
-  if (currentIndex < resData.length - 1) {
-    change(resData[currentIndex + 1])
+  const currentIndex = mediaStore.MediaData.findIndex(item => item.Name === playingData.Name)
+  if (currentIndex < mediaStore.MediaData.length - 1) {
+    change(mediaStore.MediaData[currentIndex + 1])
   }
 }
 

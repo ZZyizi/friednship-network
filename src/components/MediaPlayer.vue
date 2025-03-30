@@ -93,10 +93,10 @@
 </template>
 
 <script setup lang="ts">
-import {ref, computed, watch, onMounted, nextTick} from 'vue'
+import {ref, computed, watch, onMounted, nextTick, onUnmounted} from 'vue'
 import {Back, VideoPlay, VideoPause, Mute, FullScreen, Microphone} from '@element-plus/icons-vue'
 import type { FileInter } from '../api/medium/type'
-import {useSettings} from "../store";
+import { useSettings} from "../store";
 // import {FileUrl} from "../api/medium";
 
 const props = defineProps<{
@@ -115,16 +115,8 @@ const duration = ref(0)
 const previousVolume = ref(settingsStore.settings.defaultVolume)
 // const isElectron:boolean= navigator.userAgent.includes("Electron")
 const lastTime=localStorage.getItem("currentTime")?JSON.parse(localStorage.getItem("currentTime") as string):0
-const broadcast_url=computed(() => {
-  return props.currentMedia?.Url
-  // const IP=window.location.hostname
-  // if (isElectron){
-  //   return props.currentMedia?.Url
-  // }else {
-  //   // const encodedValue = encodeURIComponent(props.currentMedia?.Url);
-  //   // return FileUrl(IP,props.currentMedia?.Name,encodedValue);
-  //   return props.currentMedia?.Url
-  // }
+const broadcast_url=computed( () => {
+  return props.currentMedia?.Url+"?t=${Date.now()"
 })
 const isVideo = computed(() => {
   return props.currentMedia?.Suffix.toLowerCase().match(/\.(mp4|webm|ogg)$/)
@@ -140,10 +132,23 @@ onMounted( async ()=>{
     }
   }
 })
+
+// 在组件卸载时
+onUnmounted(() => {
+  if (mediaRef.value) {
+    mediaRef.value.pause()
+    mediaRef.value.removeAttribute('src')
+    mediaRef.value = null
+  }
+})
+
+
 watch(() => props.currentMedia, async () => {
   if (mediaRef.value && props.currentMedia) {
     currentTime.value = 0
     duration.value = 0
+    await nextTick()
+    mediaRef.value.src=broadcast_url.value
     mediaRef.value.load()
     if (settingsStore.settings.autoPlay&&settingsStore.isPlaying) {
       await mediaRef.value.play()
@@ -171,6 +176,9 @@ const onTimeUpdate = () => {
   if (!mediaRef.value) return
   currentTime.value = mediaRef.value.currentTime
   settingsStore.currentTime=currentTime.value
+  if (currentTime.value>=duration.value){
+    onNext()
+  }
 }
 
 const onLoadedMetadata = () => {
@@ -208,7 +216,10 @@ const onVolumeChange = (value: number) => {
 const onPrevious = () => emit('previous')
 const onNext = () => emit('next')
 const onError = (error: any) => emit('error', error)
-const onEnded = () => onNext()
+const onEnded = () => {
+  console.log(1111111)
+  onNext()
+}
 
 //全屏
 const toggleFullScreen=()=>{
