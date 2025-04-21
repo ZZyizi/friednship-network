@@ -1,6 +1,6 @@
 # LAN Media Share Desktop App
 
-这是一个基于**ES语法**、**Vite**、**Electron**、**Typescript** 和 **Vue 3** 实现的桌面应用程序，旨在通过局域网（LAN）实现媒体文件的共享。用户可以在同一网络下轻松访问和共享 视频、音频等媒体资源。
+这是一个基于**ES语法**、**Vite**、**Electron**、**Typescript** 和 **Vue 3** 实现的桌面应用程序，旨在通过局域网（LAN）实现媒体文件的共享。用户可以在同一网络下轻松访问和共享 视频、音频等媒体资源，将闲置windows打造为nas。
 
 ## 功能特性
 
