@@ -128,7 +128,8 @@ async function createDir(path:string) {
             rememberLastPlayed: false,
             scanPaths: [],
             showTray:true,
-            minimization:true
+            minimization:true,
+            isRole:false
         }), 'utf8');
     }
     // 创建fileCache.json文件
@@ -145,6 +146,7 @@ async function loadCacheFromFile(path:string,key:string) {
         if (fs.existsSync(path)) {
             const data = fs.readFileSync(path, 'utf-8');
             const results:FileInter[]=JSON.parse(data);
+            if (!results||results.length<=0) return null;
             switch (key) {
                 case 'all':
                     return results;
@@ -273,7 +275,8 @@ async function ensureFileExists(filePath: string) {
                 rememberLastPlayed: false,
                 scanPaths: [],
                 showTray:true,
-                minimization:true
+                minimization:true,
+                isRole:false
             }), 'utf8');
         } else {
             throw err;
