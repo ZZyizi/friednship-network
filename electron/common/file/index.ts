@@ -1,17 +1,43 @@
 import * as fs from 'fs';
 import * as path from 'path';
-import {FileInter, MusicInfo} from "../../../src/api/medium/type.ts";
+import {ClassifyType, FileInter, MusicInfo} from "../../../src/api/medium/type.ts";
 import {parseFile} from 'music-metadata';
 import {configType} from "../../type/config.ts";
-import {SETTINGS_FILE_PATH, CACHE_FILE, CACHE_FILE_PATH, CACHE_DATA, ffmpeg_path} from "../../main.ts";
+import {SETTINGS_FILE_PATH, CACHE_FILE, CACHE_FILE_PATH, CACHE_DATA, ffmpeg_path, CACHE_FILE_TYPE} from "../../main.ts";
 import fsOld from "fs/promises";
 import ffmpeg from 'fluent-ffmpeg';
 import crypto from 'crypto';
+import md5 from "md5";
+import { imageManager } from '../image';
 
 // 定义音乐文件的扩展名
 export const musicType = ['.mp3', '.wav', '.flac', '.aac', '.m4a', '.ogg', '.wma', '.ape', '.aiff', '.aif', '.aifc', '.mka', '.wv', '.opus', '.mka', '.m4b', '.m4p', '.m4r', '.m4v', '.mpc', '.mp+', '.mpp', '.mp+'];
 export const videoType=['.mp4', '.avi', '.mkv', '.mov', '.wmv', '.flv', '.rmvb', '.rm', '.mpg', '.mpeg', '.mpe', '.mpv', '.m2v', '.mts', '.m2ts', '.ts', '.vob', '.ogv', '.3gp', '.3g2', '.webm', '.ogm', '.divx', '.xvid'];
 const mediaType=[...musicType,...videoType]
+const defineSettings={
+    theme: "light",
+    scanOnStartup: false,
+    scanInterval: 10,
+    port: 3000,
+    autoPlay: false,
+    defaultVolume: 80,
+    rememberLastPlayed: false,
+    scanPaths: [],
+    showTray:true,
+    minimization:true,
+    isRole:false
+}
+const defineMusicInfo={
+    quality:"未知",
+    duration:0,
+    artist:"未知",
+    album:"未知",
+    lyrics:[],
+    picture:null,
+    resolution:null
+}
+const ignoreDirs = ['node_modules', '.git', 'System Volume Information', '$RECYCLE.BIN','dist'];
+
 /**
  * 判断文件是否为音乐文件
  * @param filePath 文件路径
@@ -19,12 +45,14 @@ const mediaType=[...musicType,...videoType]
 const isMusicFile = (filePath: string): boolean => {
     return mediaType.includes(path.extname(filePath).toLowerCase());
 };
+
 let configData:configType|null=null//配置信息
 let count=0//计数器
 /**
  * 递归查找目录下的音乐文件
  * @param dir 目录路径
  * @param musicFiles 存储找到的音乐文件路径
+ * @param prepose 前置节点文件
  */
 const findMusicFiles = async (dir: string, musicFiles: FileInter[] = []): Promise<FileInter[]> => {
     try {
@@ -34,7 +62,7 @@ const findMusicFiles = async (dir: string, musicFiles: FileInter[] = []): Promis
             const fullPath = path.join(dir, entry.name);
             if (entry.isDirectory()) {
                 // 忽略某些目录
-                if (['node_modules', '.git', 'System Volume Information', '$RECYCLE.BIN'].includes(entry.name)) {
+                if (ignoreDirs.includes(entry.name)) {
                     continue;
                 }
                 await findMusicFiles(fullPath, musicFiles);
@@ -44,20 +72,14 @@ const findMusicFiles = async (dir: string, musicFiles: FileInter[] = []): Promis
                 const fileExtension = path.extname(fullPath);
                 const MusicInfo =await getMusicMetadata(fullPath)
                 const size= await fs.promises.stat(fullPath).then(stat => stat.size);
+                const classify:ClassifyType=await getMediaClassify(fullPath,MusicInfo.picture as string)
                 musicFiles.push({
                     Url: fullPath,
                     Name: fileName,
                     Suffix: fileExtension,
                     Size: size,
-                    Duration:MusicInfo.duration,
-                    info:{
-                        quality:MusicInfo.quality,
-                        album:MusicInfo.album,
-                        artist:MusicInfo.artist,
-                        lyrics:MusicInfo.lyrics,
-                        picture:MusicInfo.picture,
-                        resolution:MusicInfo.resolution
-            }
+                    info:MusicInfo,
+                    classify:classify
                 });
             }
         }
@@ -71,6 +93,7 @@ const findMusicFiles = async (dir: string, musicFiles: FileInter[] = []): Promis
 /**
  * 查找整机的音乐文件
  */
+
 const findAllMusicFiles = async (drives: string[] | undefined): Promise<FileInter[]> => {
     console.time('file')
     if (!drives || drives.length === 0) {
@@ -78,7 +101,6 @@ const findAllMusicFiles = async (drives: string[] | undefined): Promise<FileInte
         return [];
     }
     let allMusicFiles: FileInter[] = [];
-
     await ensureFileExistsData(CACHE_DATA)//创建
     count=0
     for (const drive of drives) {
@@ -102,7 +124,7 @@ const findAllMusicFiles = async (drives: string[] | undefined): Promise<FileInte
 };
 
 // 保存缓存到 JSON 文件
-function saveCacheToFile(path:string,musicList:any) {
+async function saveCacheToFile(path:string,musicList:FileInter[]) {
     try {
         fs.writeFileSync(path, JSON.stringify(musicList, null, 2), 'utf-8');
         console.log('缓存已保存到文件。');
@@ -118,30 +140,23 @@ async function createDir(path:string) {
     const configPath = path + '/config.json';
     //创建config.json文件
     if(!fs.existsSync(configPath)){
-        fs.writeFileSync(configPath, JSON.stringify({
-            theme: "light",
-            scanOnStartup: false,
-            scanInterval: 10,
-            port: 3000,
-            autoPlay: false,
-            defaultVolume: 80,
-            rememberLastPlayed: false,
-            scanPaths: [],
-            showTray:true,
-            minimization:true,
-            isRole:false
-        }), 'utf8');
+        fs.writeFileSync(configPath, JSON.stringify(defineSettings), 'utf8');
     }
     // 创建fileCache.json文件
     const fileCachePath = path + '/fileCache.json';
     if(!fs.existsSync(fileCachePath)){
         fs.writeFileSync(fileCachePath, JSON.stringify(null), 'utf8');
     }
+    const fileTypeCachePath= path + '/classifyType.json';
+    if(!fs.existsSync(fileTypeCachePath)){
+        fs.writeFileSync(fileTypeCachePath, JSON.stringify(null), 'utf8');
+    }
 }
 
 // 从 JSON 文件加载缓存
 async function loadCacheFromFile(path:string,key:string) {
     if (!key) return null;
+    
     try {
         if (fs.existsSync(path)) {
             const data = fs.readFileSync(path, 'utf-8');
@@ -166,24 +181,96 @@ async function loadCacheFromFile(path:string,key:string) {
         return null;
     }
 }
+//保存媒体分类到json中
+async function saveClassifyToFile(path:string,classify:ClassifyType,picture:string|null) {
+    try {
+        let data= await getClassifyFromFile(path)
+        if (picture&&picture.length>0)  {
+            classify.picture=picture
+        }
+        if (data) {
+            const index=data.findIndex((item:ClassifyType)=>item.prepose===classify.prepose)
+            if (index<0){
+                data.push(classify)
+            }else {
+                if (!picture){
+                    classify.picture=data[index].picture
+                }
+                data[index]=classify
+            }
+        }else {
+            data=[classify]
+        }
+        fs.writeFileSync(path, JSON.stringify(data, null, 2), 'utf-8');
+    } catch (error) {
+        console.error('加载缓存失败:', error);
+    }
+}
+
+//清理媒体分类中没有的json
+async function cleanClassify() {
+    try {
+        let data= await getClassifyFromFile(CACHE_FILE_TYPE)
+        const fileCache=await loadCacheFromFile(CACHE_FILE_PATH,'all')
+        if (data&&fileCache) {
+            data=data.filter((item:ClassifyType)=>{
+                return fileCache.some((file:FileInter)=>file.classify?.prepose===item.prepose)
+            })
+            fs.writeFileSync(CACHE_FILE_TYPE, JSON.stringify(data, null, 2), 'utf-8');
+            console.log('清理媒体分类完成');
+        }
+    }catch (error) {
+        console.error('加载缓存失败:', error);
+    }
+}
+
+//获取媒体分类缓存
+async function getClassifyFromFile(path:string) {
+    if (!path) return null;
+    try {
+        if (fs.existsSync(path)) {
+            const data = fs.readFileSync(path, 'utf-8');
+            const results:ClassifyType[]=JSON.parse(data);
+            return results;
+        }else return null;
+    } catch (error) {
+        console.error('加载缓存失败:', error);
+        return null
+    }
+}
+
+//获取媒体分类
+async function getMediaClassify(path:string,picture:string) {
+
+    if(!fs.existsSync(CACHE_FILE_TYPE)){
+        fs.writeFileSync(CACHE_FILE_TYPE, JSON.stringify(null), 'utf8');
+    }
+    const pathArr=path.split('\\')
+    const creationTime= await fs.promises.stat(path).then(stat => stat.birthtimeMs);
+    const creationTimeData = new Date(creationTime);
+    const classify:ClassifyType={
+        year:String(creationTimeData.getFullYear()),
+        month:String(creationTimeData.getMonth() + 1).padStart(2, '0'),
+        day:String(creationTimeData.getDate()).padStart(2, '0'),
+        prepose:pathArr[pathArr.length-2]
+    }
+    const data = JSON.parse(JSON.stringify(classify));//值传递，深拷贝方式
+    await saveClassifyToFile(CACHE_FILE_TYPE, classify, picture)//保存
+
+    return data
+}
 //获取音频元数据
 async function getMusicMetadata(filePath: string) {
     const fileName=await getFileKey(filePath) as string
-    let musicInfo:MusicInfo={
-        quality:"未知",
-        duration:0,
-        artist:"未知",
-        album:"未知",
-        lyrics:[],
-        picture:null,
-        resolution:null
-    };//音频信息
+    let musicInfo:MusicInfo=defineMusicInfo;//音频信息
+
     try {
         let picture=null;//音频封面
         const metadata = await parseFile(filePath);
         const bitrateKbps = metadata.format.bitrate; // 转换为 kbps
         const sampleRate = metadata.format.sampleRate; // Hz
         let resolution:string|null=null;//视频分辨率
+
         if (metadata.common.picture && metadata.common.picture.length > 0) {
             const cover = metadata.common.picture[0]; // 取第一张封面
             if(cover.data){
@@ -265,19 +352,7 @@ async function ensureFileExists(filePath: string) {
         if (err.code === 'ENOENT') {
             const dirPath = path.dirname(filePath);
             await fsOld.mkdir(dirPath, { recursive: true });
-            await fsOld.writeFile(filePath, JSON.stringify({
-                theme: "light",
-                scanOnStartup: false,
-                scanInterval: 10,
-                port: 3000,
-                autoPlay: false,
-                defaultVolume: 80,
-                rememberLastPlayed: false,
-                scanPaths: [],
-                showTray:true,
-                minimization:true,
-                isRole:false
-            }), 'utf8');
+            await fsOld.writeFile(filePath, JSON.stringify(defineSettings), 'utf8');
         } else {
             throw err;
         }
@@ -297,11 +372,21 @@ export async function ensureFileExistsData(filePath: string) {
         throw err;
     }
 }
-//转存本地
+//转存本地图片
 async function saveBase64Image(base64Data:string|null,fileName:string,extension = 'jpg') {
     if (!base64Data) return null;
-    if (fs.existsSync(`${CACHE_DATA}\\${fileName}.jpg`)) return `${CACHE_DATA}\\${fileName}.jpg`;
+    
     try {
+        // 使用 ImageManager 保存图片
+        const relativePath = await imageManager.saveBase64Image(base64Data, fileName);
+        if (relativePath) {
+            return relativePath;
+        }
+        
+        // 如果 ImageManager 失败，回退到原有逻辑
+        const legacyPath = `${CACHE_DATA}\\${fileName}.jpg`;
+        if (fs.existsSync(legacyPath)) return legacyPath;
+        
         // 去掉 Base64 前缀（如果有）
         const base64Content = base64Data.includes('base64,')
             ? base64Data.split(',')[1]
@@ -309,21 +394,19 @@ async function saveBase64Image(base64Data:string|null,fileName:string,extension 
 
         // 解码 Base64 数据
         const buffer = Buffer.from(base64Content, 'base64');
-        // 生成唯一文件名
-        // const uniqueId = crypto.randomBytes(16).toString('hex'); // 生成 32 位的十六进制字符串
         const file = `${fileName}.${extension}`;
         const outputPath = path.join(CACHE_DATA,file);
         // 将二进制数据写入文件
         fs.writeFileSync(outputPath, buffer);
-        return outputPath
+        return outputPath;
     } catch (error) {
         console.error('保存图片失败:', error);
-        return null
+        return null;
     }
 }
 
 
-// 获取配置文件的路径
+// 获取配置数据
 async function getConfigData() {
     try {
         await createDir(CACHE_FILE)
@@ -335,12 +418,25 @@ async function getConfigData() {
         console.log(error)
         configData= null
     }
-
 }
 //保存设置给内存缓存
-async function saveConfigData(data: any) {
+async function saveConfigData(data: configType) {
+    // 密码验证逻辑
+    const inputHash=md5("123456")
+    if (inputHash !== data.password) {
+        console.log('密码已被更改');
+    }else {
+        console.log('密码正确');
+    }
+    
     configData = data //更新缓存
-    await fsOld.writeFile(SETTINGS_FILE_PATH, JSON.stringify(data, null, 2))
+    
+    try {
+        await fsOld.writeFile(SETTINGS_FILE_PATH, JSON.stringify(data, null, 2))
+        console.log('配置已保存到文件');
+    } catch (error) {
+        console.error('保存配置失败:', error);
+    }
 }
 async function getVideoFrame(videoPath: string, fileName: string) {
     ffmpeg.setFfmpegPath(ffmpeg_path as string);
@@ -418,7 +514,15 @@ async function cleanCache() {
         let data:string[]=[];
         let size:number=0;
         let promises:any=[]
-        //扫描所有的png
+        
+        // 检查目录是否存在
+        if (!fs.existsSync(dataPath)) {
+            console.log('缓存目录不存在，跳过清理');
+            console.timeEnd("清理缓存");
+            return;
+        }
+        
+        //扫描所有的jpg图片
         const files = fs.readdirSync(dataPath);
         for (const file of files) {
             if (file.endsWith('.jpg')) {
@@ -441,6 +545,7 @@ async function cleanCache() {
                 fs.unlinkSync(item)
             }
         })
+        await cleanClassify()
         Promise.all(promises).then(() => {
             console.log(`清理缓存成功,清理${parseInt(String(size))}kb`)
             console.timeEnd("清理缓存")
@@ -449,8 +554,15 @@ async function cleanCache() {
         throw err;
     }
 }
+
 async function getCacheData(url: string) {
     const fileData = await loadCacheFromFile(CACHE_FILE_PATH, 'video')
     return fileData?.find((item) => item.info?.picture === url)
 }
-export { findAllMusicFiles, saveCacheToFile,loadCacheFromFile, createDir,getConfigData,configData,cleanCache,saveConfigData }
+
+
+export {
+    findAllMusicFiles, saveCacheToFile,loadCacheFromFile,
+    createDir, getConfigData,configData,cleanCache,
+    saveConfigData,cleanClassify
+}

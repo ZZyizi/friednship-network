@@ -6,6 +6,7 @@ export interface shareMenuType{
     port?:number;
     local:boolean;
     mac?:string;
+    pass?:string;
 }
 export interface shareDataType{
     label: string;
@@ -14,4 +15,5 @@ export interface shareDataType{
     port:number;
     status:boolean;
     mac?:string;
+    pass?:string;
 }

@@ -1,54 +1,14 @@
 <template>
-  <div class="container">
-    <!-- 顶部控制栏 -->
-    <div class="top-bar glass-effect">
-      <div class="top-bar-content">
-        <el-dropdown>
-          <h2>{{MenuLabel}}</h2>
-          <template #dropdown>
-            <el-dropdown-menu>
-              <el-dropdown-item v-for="item in networkStore.shareMenu" @click="go(item)">{{item.label}}</el-dropdown-item>
-            </el-dropdown-menu>
-          </template>
-        </el-dropdown>
-        <div class="controls">
-          <div class="button-fun" >
-            <el-button
-                class="settings-btn"
-                @click="settingsVisible=true"
-                type="primary"
-                :icon="Setting"
-                circle
-            />
-            <el-button
-                v-if="isElectron"
-                class="settings-btn"
-                @click="shareVisible=true"
-                type="success"
-                :icon="Share"
-                circle
-            />
-          </div>
-        </div>
-      </div>
-      <div  class="search-box" style="margin-top: 30px">
-        <el-input
-            v-model="searchQuery"
-            placeholder="搜索..."
-            clearable
-            :suffix-icon="Search"
-            class="search-input"
-        />
-      </div>
-    </div>
-
+  <HeadLayout/>
     <!-- 媒体列表 -->
     <div class="media-container glass-effect">
-      <ul  class="music-items">
+      <ul class="music-items">
         <li v-for="item in filteredMusicList"
             @click="change(item,1)"
-            :class="{ active: item.Url === playingData.Url }"
-            class="music-item">
+            :class="{ active: item.Url === mediaStore.playingData.Url }"
+            class="music-item"
+            ref="mediaLi"
+        >
           <div class="music-item-content">
             <img v-if="item.info?.picture" :src="item.info.picture" class="music-cover" alt="封面">
             <img v-else src="../assets/icons8-mp3-64.png" class="music-cover" alt="封面">
@@ -61,7 +21,7 @@
               <div class="music-details" v-if="item.info">
                 <span v-if="item.info.artist" :data-content="`作者: ${item.info.artist}`">作者: {{item.info.artist}}</span>
                 <span v-if="item.info.album" :data-content="`专辑: ${item.info.album}`">专辑: {{item.info.album}}</span>
-                <span v-if="item.Duration">时长: {{formatDuration(item.Duration)}}</span>
+                <span v-if="item.info.duration">时长: {{formatDuration(item.info.duration)}}</span>
                 <span class="file-size">大小: {{formatFileSize(item.Size)}}</span>
                 <span class="quality-tag" :class="getQualityClass(item.info.quality)">
                   {{item.info.quality}}
@@ -78,144 +38,37 @@
         未找到匹配的媒体
       </div>
     </div>
-    <!-- 添加播放器组件 -->
-    <MediaPlayer
-      v-model="showPlayer"
-      :current-media="playingData"
-      @previous="playPrevious"
-      @next="playNext"
-      @error="handlePlayError"
-      ref="MediaChildRef"
-    />
-
-    <el-button @click="parse" :icon="settingsStore.isPlaying ? VideoPause : VideoPlay" class="frosted-glass-btn"></el-button>
-    <!-- 设置弹窗 -->
-    <SettingsDialog
-        v-model="settingsVisible"
-        @callParentMethod="update"
-    />
-    <share-dialog
-        v-if="isElectron"
-        v-model="shareVisible"
-    />
-  </div>
 </template>
 
 <script setup lang="ts">
-import {computed, onBeforeUnmount, onMounted, reactive, ref} from 'vue'
-import {reqFileData, reqShare} from "../api/medium";
+import {computed, nextTick, onMounted, ref} from 'vue'
 import {FileInter} from "../api/medium/type.ts";
-import {Search, Setting, Share, VideoPause, VideoPlay} from '@element-plus/icons-vue'
-import SettingsDialog from "../components/SettingsDialog.vue";
-import {loading} from "../util/loadIng.ts";
-import type MediaPlayer from "../components/MediaPlayer.vue";
-import {useMedia, useNetwork, useSettings} from "../store";
-import ShareDialog from "../components/ShareDialog.vue";
+import {useMedia, useSettings, useSwitch} from "../store";
+import HeadLayout from "../components/layout/HeadLayout.vue";
 import {useRouter} from "vue-router";
 
-const { file } =window;
-// const UserEquipment= navigator.userAgent.match(/(phone|pad|pod|iPhone|iPod|ios|iPad|Android|Mobile|BlackBerry|IEMobile|MQQBrowser|JUC|Fennec|wOSBrowser|BrowserNG|WebOS|Symbian|Windows Phone)/i)
-const isElectron:boolean= navigator.userAgent.includes("Electron")
 const settingsStore=useSettings()
 const mediaStore=useMedia()
-const networkStore=useNetwork()
 const router=useRouter()
-let playingData=reactive<FileInter>({
-  Name:"",
-  Url:"",
-  Suffix:"",
-  Size:0,
-  Duration:0,
-})
-let MenuLabel=ref("全部媒体")
+const useSwitchStore=useSwitch()
 const searchQuery = ref('')
-// 添加播放器控制
-const showPlayer = ref(false)
-// 修改设置相关的响应式变量
-const settingsVisible = ref(false)
-//共享相关响应式变量
-const shareVisible = ref(false)
 let count:number=0//计数器
-const MediaChildRef=ref<typeof MediaPlayer>()//定义组件的ref
+const mediaLi=ref<any>(null)//获取媒体li的ref
 
-onMounted(() => {
+onMounted(async () => {
   const key:string= router.currentRoute.value.query.key?router.currentRoute.value.query.key.toString():'all';
-  update(key)
-  load()
-  window.addEventListener("beforeunload", handleBeforeUnload, { passive: false });//挂载方法
+  await mediaStore.routerUpdateFile(key)
+  await nextTick()
+  mediaStore.mediaLi=mediaLi.value
 })
 
-//刷新页面时候
-onBeforeUnmount(()=>{
-  window.removeEventListener("beforeunload", handleBeforeUnload);//卸载方法
-})
-
-// 页面刷新时，保存时间
-const handleBeforeUnload = () => {
-  pauseFunction();
-};
-
-async function go(item:any) {
-  loading()
-  MenuLabel.value=item.label
-  await router.replace(item.router)
-  if (item.local){
-    await update(item.key)
-  }else {
-    const data:FileInter[]=await (await reqShare(item.ip,item.port,item.key)).data
-    mediaStore.setMediaData(data)
-  }
-  loading().close();
-}
-async function update(label:string){
-  loading()
-  let resD:FileInter[];
-  if(isElectron){
-    resD=await file.loadFileCache(label)
-  }else {
-    resD= (await reqFileData(label)).data
-  }
-  // 将去重后的数据添加到
-  mediaStore.setMediaData(resD)
-  loading().close();
-}
-//去重
-// function uniqueArray(arr:FileInter[]) {
-//   if (arr){
-//     // 使用 Set 去重，基于文件的 URL 和名称
-//     const uniqueFiles = new Set();
-//     return arr.filter(item => {
-//       const key = `${item.Url}`;
-//       if (!uniqueFiles.has(key)) {
-//         uniqueFiles.add(key);
-//         return true;
-//       }
-//       return false;
-//     });
-//   }else {
-//     return []
-//   }
-// }
-// 加载记录播放功能
-function load(){
-  const lastPlayed = localStorage.getItem('lastPlayed');
-  if(settingsStore.settings.autoPlay&&settingsStore.settings.rememberLastPlayed&&lastPlayed){
-    change(JSON.parse(lastPlayed as string),1)
-  }
-}
-//播放暂停
-function parse(){
-  if (MediaChildRef.value) {
-    MediaChildRef.value.togglePlay();//暴露给父组件该方法; // 调用子组件的方法
-  }
-}
 async function change(item:FileInter,status:number=0){
   count++;
-  Object.assign(playingData,item)
+  mediaStore.setPlayingData(item)
 
   //主动打开
   if (status===1){
-    showPlayer.value = true
+    useSwitchStore.showPlayerVisible = true
   }
   // 保存播放记录
   if (settingsStore.settings.rememberLastPlayed) {
@@ -223,12 +76,9 @@ async function change(item:FileInter,status:number=0){
   }
 }
 
-const pauseFunction = () =>{
-  localStorage.setItem("currentTime",JSON.stringify(settingsStore.currentTime))
-}
 // 添加计算属性用于过滤媒体列表
 const filteredMusicList = computed(() => {
-  const query = searchQuery.value.toLowerCase().trim()
+  const query = mediaStore.searchQuery.toLowerCase().trim()
   if (!query) return mediaStore.MediaData
 
   return mediaStore.MediaData.filter(item =>
@@ -280,91 +130,15 @@ const formatFileSize = (bytes: number): string => {
   return `${size.toFixed(2)} ${units[unitIndex]}`;
 };
 
-const playPrevious = () => {
-  const currentIndex = mediaStore.MediaData.findIndex(item => item.Name === playingData.Name)
-  if (currentIndex > 0) {
-    change(mediaStore.MediaData[currentIndex - 1])
-  }
-}
 
-const playNext = () => {
-  const currentIndex = mediaStore.MediaData.findIndex(item => item.Name === playingData.Name)
-  if (currentIndex < mediaStore.MediaData.length - 1) {
-    change(mediaStore.MediaData[currentIndex + 1])
-  }
-}
-
-const handlePlayError = (_: any) => {
-  playNext()
-}
 </script>
 
 <style lang="scss" scoped>
-.container {
-  position: relative;
-  min-height: 100vh;
-  height: 100vh;
-  padding: 2rem;
-  background: var(--bg-container);
-  color: var(--color-container);
-  display: flex;
-  flex-direction: column;
-  gap: 1.5rem;
-  box-sizing: border-box;
-}
 
-.top-bar {
-  position: sticky;
-  top: 2rem;
-  z-index: 100;
-  padding: 1.5rem;
-
-  .top-bar-content {
-
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    gap: 2rem;
-
-    h2 {
-      font-size: 1.5rem;
-      font-weight: 600;
-      color: var(--text-color);
-      margin: 0;
-    }
-
-    .controls {
-      position: relative;
-      display: flex;
-      align-items: center;
-      gap: 1rem;
-      flex: 1;
-      max-width: 600px;
-
-
-      .settings-btn {
-        flex-shrink: 0;
-      }
-    }
-  }
-}
-.button-fun {
-  position: absolute; /* 绝对定位 */
-  right: 0; /* 固定在父容器的右侧边界 */
-  top: 50%; /* 垂直居中 */
-  transform: translateY(-50%); /* 根据高度调整垂直位置 */
-  display: flex;
-  gap: 10px; /* 按钮之间的间距 */
-}
 .media-container {
-  flex: 1;
   min-height: 0;
-  overflow: hidden;
-  padding: 1.5rem;
   display: flex;
-  flex-direction: column;
 }
-
 .glass-effect {
   background: var(--glass-effect-bg);
   backdrop-filter: blur(12px);
@@ -524,25 +298,24 @@ const handlePlayError = (_: any) => {
     }
   }
 }
-.frosted-glass-btn {
+.frosted-glass-local-btn {
   /* 圆形 */
   position: absolute; /* 绝对定位 */
   right: 10%; /* 固定在父容器的右侧边界 */
-  top: 70%; /* 垂直居中 */
-  transform: translateY(-10%); /* 根据高度调整垂直位置 */
+  top: 65%; /* 垂直居中 */
+  transform: translateY(-30%); /* 根据高度调整垂直位置 */
   display: flex;
-  gap: 10px; /* 按钮之间的间距 */
+  gap: 20px; /* 按钮之间的间距 */
   border-radius: 50%;
-  width: 50px;
-  height: 50px;
+  width: 30px;
+  height: 30px;
   /* 基础样式 */
   background: rgba(0, 123, 255, 0.2); /* 蓝色半透明背景 */
   border: none;
   color: #fff;
-  padding: 15px 20px;
   font-size: 16px;
   cursor: pointer;
-  transition: all 0.3s ease;
+  transition: all 0.6s ease;
 
   /* 毛玻璃效果 */
   backdrop-filter: blur(5px);
@@ -550,9 +323,8 @@ const handlePlayError = (_: any) => {
 }
 
 /* 悬停效果 */
-.frosted-glass-btn:hover {
+.frosted-glass-local-btn:hover {
   background: rgba(0, 123, 255, 0.7);
-  transform: scale(1.05);
 }
 @media (max-width: 768px) {
   .container {

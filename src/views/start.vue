@@ -2,12 +2,12 @@
 import { ref,onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { ElMessage } from 'element-plus'
-import service from "../api";
+// import service from "../api";
 import {reqLink} from "../api/medium";
 import {loading} from "../util/loadIng.ts";
 
 const router = useRouter()
-const port = ref()
+const key = ref<string>("")
 let isElectron:boolean=navigator.userAgent.includes("Electron")
 
 onMounted(async ()=>{
@@ -16,20 +16,16 @@ onMounted(async ()=>{
   }
 })
 const handleStart = async () => {
-  if (!port.value || port.value < 1000 || port.value > 65535) {
-    ElMessage.warning('请输入有效的端口号(1000-65535)')
-    return;
-  }
   if (isElectron){
     await router.replace('/')
     return;
   }
   try {
     loading()
-    service.defaults.baseURL = `http://${window.location.hostname}:${port.value}`;
-    const licence = await reqLink()
+    // service.defaults.baseURL = `http://${window.location.hostname}:${3000}`;
+    const licence = await reqLink(key.value)
     if (licence.data){
-      localStorage.setItem('port', port.value.toString())
+      localStorage.setItem("key", key.value)
       await router.push('/home')
       ElMessage.success("连接成功")
     }else {
@@ -38,7 +34,7 @@ const handleStart = async () => {
     // 导航到主页
   } catch (error: any) {
     console.error('启动失败：', error.message)
-    ElMessage.error('连接失败，请检查端口是否被占用')
+    ElMessage.error('错误')
   }finally {
     loading().close()
   }
@@ -51,21 +47,20 @@ const handleStart = async () => {
       <img src="/favicon.ico" alt="logo" class="logo">
       <h1>friendship-network</h1>
       <div class="port-input">
+        <h5>请输入密码</h5>
         <el-input
-          v-model="port"
-          placeholder="请输入端口号 (1000-65535)"
-          type="number"
-          :min="1000"
-          :max="65535"
+          v-model="key"
+          placeholder="请输入密码"
+          type="text"
           @keyup.enter="handleStart"
         >
           <template #append>
             <el-button type="primary" @click="handleStart">
-              开始使用
+              连接
             </el-button>
           </template>
         </el-input>
-        <p class="tip">端口号将用于设备间媒体共享，请确保端口未被占用</p>
+        <p class="tip">密码将用于验证权限，没有则直接点击连接</p>
       </div>
     </div>
   </div>

@@ -10,6 +10,8 @@ export interface Settings {
     scanPaths: string[]; // 扫描路径列表
     showTray:boolean;
     minimization:boolean;
+    isRole:boolean;
+    password:string;
 }
 export interface MenuItem {
     title: string;
@@ -25,4 +27,5 @@ export interface FormItem {
     component: any;
     props?: Record<string, any>;
     options?: any[];
+    event?:any;
 }

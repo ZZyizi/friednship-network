@@ -25,6 +25,13 @@ export const useNetwork = defineStore("useNetwork", {
                 router:"/home?key=video",
                 local:true,
                 mac:'local'
+            },
+            {
+                label:"影视墙",
+                key:"wall",
+                router:"/wall",
+                local:true,
+                mac:'local'
             }
         ])
         return({
@@ -60,7 +67,6 @@ export const useNetwork = defineStore("useNetwork", {
                     mac:item.mac
                 });
             }
-            console.log(this.shareMenu)
         }
     },
 });

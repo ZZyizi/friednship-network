@@ -1,6 +1,6 @@
 import {BrowserWindow, nativeTheme} from "electron";
 import {isQuitting} from "../../main.ts";
-import {configData, getConfigData} from "../../common/file/searchFile.ts";
+import {configData, getConfigData} from "../../common/file";
 
 export function eventHandling(win: BrowserWindow){
     //程序事件

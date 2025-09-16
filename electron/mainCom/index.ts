@@ -12,6 +12,7 @@ import {
 import {copy, getIp, getLoadNet, getStartServer, start, theme} from "./config";
 
 function file() {
+    // 原有的文件操作
     ipcMain.on('file-save', writeFile) // 保存文件
     ipcMain.handle('file-read',readFile)// 读取文件
     ipcMain.handle('load-file-cache',loadFileCache)// 加载文件缓存

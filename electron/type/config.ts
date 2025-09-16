@@ -7,6 +7,8 @@ export interface configType{
     scanOnStartup?:boolean,// 开机自启
     scanInterval?:number,// 扫描间隔
     theme?:string,// 主题
-    minimization?: boolean,
-    showTray?: boolean
+    minimization?: boolean,//最小化
+    showTray?: boolean// 显示托盘
+    isRole?:boolean//是否需要验证密码
+    password?:string//密码
 }

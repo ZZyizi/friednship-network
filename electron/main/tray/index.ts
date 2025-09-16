@@ -4,7 +4,7 @@ import path from "node:path";
 import os from "node:os";
 import {startServer} from "../../services.ts";
 import {CACHE_FILE_PATH, SETTINGS_FILE_PATH, win} from "../../main.ts";
-import {configData} from "../../common/file/searchFile.ts";
+import {configData} from "../../common/file";
 import fs from "fs";
 import {setServerRunning} from "../../mainCom/config";
 

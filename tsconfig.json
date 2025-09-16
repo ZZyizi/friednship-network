@@ -17,7 +17,6 @@
     "isolatedModules": true,
     "noEmit": true,
     "jsx": "preserve",
-    "exclude": ["node_modules"],
     /* Linting */
     "strict": true,
     "noUnusedLocals": true,
@@ -25,8 +24,15 @@
     "noFallthroughCasesInSwitch": true,
     "allowSyntheticDefaultImports": true
   },
-  "include": ["src/**/*", "src/**/*.tsx","src/**/*.vue", "electron/**/*",
-    "electron/common/**/*.ts"
+  "include": [
+    "src/**/*", 
+    "src/**/*.tsx",
+    "src/**/*.vue", 
+    "electron/**/*",
+    "electron/common/**/*.ts",
+    "electron/common/database/**/*.ts",
+    "electron/common/image/**/*.ts"
   ],
+  "exclude": ["node_modules"],
   "references": [{ "path": "./tsconfig.node.json" }]
 }

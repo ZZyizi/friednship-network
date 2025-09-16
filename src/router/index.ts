@@ -23,6 +23,14 @@ const routes: RouteRecordRaw[] = [
     }
   },
   {
+    path: '/wall',
+    name: 'wall',
+    component: () => import('../views/wall.vue'),
+    meta: {
+      requiresPort: true
+    }
+  },
+  {
     path: '/:pathMatch(.*)*',
     name: 'NotFound',
     component: () => index
@@ -40,14 +48,10 @@ router.beforeEach( async (to, _, next) => {
   const isElectron: boolean = navigator.userAgent.includes("Electron")
   if (to.meta.requiresPort && !isElectron) {
     // 读取设置检查是否已配置端口
-    const port = localStorage.getItem('port')
-    if (!port) {
-      next('/')
-      return
-    }
+    const key = localStorage.getItem('key')|| ''
     try {
-      service.defaults.baseURL = `http://${window.location.hostname}:${port}`;
-      const licence = await reqLink();
+      service.defaults.baseURL = `http://${window.location.hostname}:${window.location.port}`;
+      const licence = await reqLink(key);
       if (licence && licence.data) {
         next();
       } else {

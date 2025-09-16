@@ -1,7 +1,7 @@
 import axios from 'axios';
 //创建axios对象
 export const service=axios.create({
-    baseURL:`http://${window.location.hostname}:${localStorage.getItem('port')}`,
+    baseURL:`http://${window.location.hostname}:${window.location.port}`,
     // timeout:import.meta.env.VITE_APP_API_TIMEOUT,
     withCredentials: true,
     headers: {

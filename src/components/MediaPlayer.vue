@@ -93,11 +93,10 @@
 </template>
 
 <script setup lang="ts">
-import {ref, computed, watch, onMounted, nextTick, onUnmounted} from 'vue'
+import {ref, computed, watch, nextTick, onUnmounted} from 'vue'
 import {Back, VideoPlay, VideoPause, Mute, FullScreen, Microphone} from '@element-plus/icons-vue'
 import type { FileInter } from '../api/medium/type'
 import { useSettings} from "../store";
-// import {FileUrl} from "../api/medium";
 
 const props = defineProps<{
   currentMedia: FileInter,
@@ -113,25 +112,14 @@ const mediaRef = ref<HTMLVideoElement | null>(null)
 const currentTime = ref(0)
 const duration = ref(0)
 const previousVolume = ref(settingsStore.settings.defaultVolume)
-// const isElectron:boolean= navigator.userAgent.includes("Electron")
-const lastTime=localStorage.getItem("currentTime")?JSON.parse(localStorage.getItem("currentTime") as string):0
 const broadcast_url=computed( () => {
-  return props.currentMedia?.Url+"?t=${Date.now()"
+  const date=Date.now()
+  return props.currentMedia?.Url.includes("http")?props.currentMedia?.Url+`&t=${date}`:props.currentMedia?.Url
 })
 const isVideo = computed(() => {
   return props.currentMedia?.Suffix.toLowerCase().match(/\.(mp4|webm|ogg)$/)
 })
 
-
-onMounted( async ()=>{
-  await nextTick();// 等待组件渲染完成
-  if (mediaRef.value) {
-    // 这里可以执行你的逻辑
-    if(settingsStore.settings.autoPlay && settingsStore.settings.rememberLastPlayed){
-      if (!(lastTime>=mediaRef.value.duration)) onSeek(lastTime);
-    }
-  }
-})
 
 // 在组件卸载时
 onUnmounted(() => {
@@ -170,7 +158,7 @@ const togglePlay =  () :any=> {
   }
   settingsStore.isPlaying=!settingsStore.isPlaying
 }
-defineExpose({ togglePlay });//暴露给父组件该方法
+
 
 const onTimeUpdate = () => {
   if (!mediaRef.value) return
@@ -193,10 +181,13 @@ const onLoadedMetadata = () => {
   settingsStore.isPlaying=false
 }
 
-const onSeek = (value: number) => {
+const onSeek = async (value: number) => {
+  await nextTick();
   if (!mediaRef.value) return
   mediaRef.value.currentTime = value
 }
+
+defineExpose({ togglePlay,onSeek });//暴露给父组件该方法
 
 const toggleMute = () => {
   if (settingsStore.settings.defaultVolume === 0) {
@@ -217,7 +208,6 @@ const onPrevious = () => emit('previous')
 const onNext = () => emit('next')
 const onError = (error: any) => emit('error', error)
 const onEnded = () => {
-  console.log(1111111)
   onNext()
 }
 

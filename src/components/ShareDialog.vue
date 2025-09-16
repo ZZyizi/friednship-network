@@ -32,12 +32,17 @@
           <el-table-column prop="ip" label="Ip地址" width="150"></el-table-column>
           <el-table-column prop="name" label="备注" width="100">
             <template #default="scope">
-              <el-input type="text" @change="update(scope.row)" v-model="scope.row.name" />
+              <el-input type="text"  v-model="scope.row.name" />
             </template>
           </el-table-column>
           <el-table-column label="端口" width="110">
             <template #default="scope">
-              <el-input  @change="update(scope.row)" v-model="scope.row.port" :min="1000" :max="65535"  type="number" />
+              <el-input  v-model="scope.row.port" :min="1000" :max="65535"  type="number" />
+            </template>
+          </el-table-column>
+          <el-table-column label="密码" width="80">
+            <template #default="scope">
+              <el-input  v-model="scope.row.pass"  type="password" />
             </template>
           </el-table-column>
           <el-table-column label="操作" width="100">
@@ -114,7 +119,6 @@ watch(() => settingsStore.isOpen, () => {
 async function send(port:number){
   const data= await config.start(port)//启动web服务
   settingsStore.isOpen=data.success
-  // localStorage.setItem('start',JSON.stringify(settingsStore.isOpen))
   if(data.success){
     ElMessage.success(data.message)
   }else {
@@ -158,7 +162,6 @@ const handleBeforeUnload = async () => {
   if (settingsStore.isOpen) {
     const data= await config.start(0)
     settingsStore.isOpen=data.success
-    // localStorage.setItem('start',JSON.stringify(settingsStore.isOpen))
   }
 }
 //互联功能
@@ -176,6 +179,7 @@ async function getShare(){
         ip: item.ip,
         name: oldDevice.name, // 复制 name（如果存在）
         port: oldDevice.port, // 复制 port（如果存在）
+        pass:"",
         status: false,
         mac: item.mac,
       });
@@ -199,27 +203,11 @@ async function getShare(){
     status: false
   });
 }
-function update(item:shareDataType){
-  const shareData=localStorage.getItem(`shareData`)?JSON.parse(localStorage.getItem(`shareData`)||'[]'):[]
-  const data= { port:item.port, mac: item.mac,name:item.name }
-  // 3. 合并数据（基于 mac 作为唯一索引）
-  const mergedData = [...shareData];
 
-// 查找是否已有相同 mac
-  const index = mergedData.findIndex((d) => d.mac === data.mac);
-  if (index !== -1) {
-    // 如果 mac 存在，更新数据
-    mergedData[index] = { ...mergedData[index], ...data };
-  } else {
-    // 如果 mac 不存在，新增数据
-    mergedData.push(data);
-  }
-  localStorage.setItem(`shareData`,JSON.stringify(mergedData))
-}
 async function link(item:shareDataType){
   try{
     loading()
-    const data:any=await linkTest(item.ip,item.port)
+    const data:any=await linkTest(item.ip,item.port,item.pass)
     if(data.data){
       // 在 shareData 里找到对应的 item（基于 mac）
       const index = shareData.findIndex((d) => d.mac === item.mac);

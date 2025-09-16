@@ -36,6 +36,7 @@
                     v-for="item in menu.child"
                     :key="item.key"
                     :label="item.label"
+                    @change="item.event"
                 >
                   <component
                       :is="item.component"
@@ -120,6 +121,79 @@
                   </el-radio-group>
                 </el-form-item>
 
+                <!-- 数据库状态显示 -->
+                <div v-if="menu.title==='数据库状态'" class="database-status-container">
+                  <el-card class="status-card" shadow="hover">
+                    <template #header>
+                      <div class="card-header">
+                        <el-icon><DataBoard /></el-icon>
+                        <span>数据库状态</span>
+                      </div>
+                    </template>
+                    
+                    <div class="status-grid">
+                      <div class="status-item">
+                        <span class="status-label">存储模式:</span>
+                        <el-tag :type="settingsStore.isUsingDatabase ? 'success' : 'info'">
+                          {{ settingsStore.isUsingDatabase ? '数据库模式' : '文件模式' }}
+                        </el-tag>
+                      </div>
+                      
+                      <div class="status-item">
+                        <span class="status-label">数据库状态:</span>
+                        <el-tag :type="settingsStore.isDatabaseReady ? 'success' : 'warning'">
+                          {{ settingsStore.isDatabaseReady ? '就绪' : '未就绪' }}
+                        </el-tag>
+                      </div>
+                      
+                      <div class="status-item" v-if="settingsStore.migrationStatus">
+                        <span class="status-label">迁移状态:</span>
+                        <el-tag :type="settingsStore.isMigrationCompleted ? 'success' : 'processing'">
+                          {{ settingsStore.isMigrationCompleted ? '已完成' : '需要迁移' }}
+                        </el-tag>
+                      </div>
+                      
+                      <div class="status-item" v-if="settingsStore.migrationStatus?.lastMigration">
+                        <span class="status-label">最后迁移:</span>
+                        <span class="status-value">
+                          {{ new Date(settingsStore.migrationStatus.lastMigration).toLocaleString() }}
+                        </span>
+                      </div>
+                    </div>
+                    
+                    <!-- 错误显示 -->
+                    <el-alert
+                      v-if="settingsStore.hasSettingsError"
+                      :title="settingsStore.settingsError?.message || '未知错误'"
+                      type="error"
+                      :closable="false"
+                      show-icon
+                      class="error-alert"
+                    />
+                    
+                    <!-- 操作按钮 -->
+                    <div class="action-buttons">
+                      <el-button 
+                        v-if="settingsStore.needsMigration"
+                        type="primary" 
+                        @click="triggerMigration"
+                        :loading="migrationLoading"
+                      >
+                        <el-icon><Refresh /></el-icon>
+                        开始迁移
+                      </el-button>
+                      
+                      <el-button 
+                        @click="refreshDatabaseStatus"
+                        :loading="statusLoading"
+                      >
+                        <el-icon><RefreshRight /></el-icon>
+                        刷新状态
+                      </el-button>
+                    </div>
+                  </el-card>
+                </div>
+
               </el-form>
             </div>
           </div>
@@ -131,20 +205,23 @@
 
 <script setup lang="ts">
 import {ref, reactive, computed, onMounted, watch, markRaw} from 'vue'
-import {ElInputNumber, ElMessage, ElSelect, ElSlider, ElSwitch} from "element-plus";
+import {ElInput, ElInputNumber, ElMessage, ElSelect, ElSlider, ElSwitch} from "element-plus";
 import * as Icons from "@element-plus/icons-vue";
-import {Folder, Plus, RefreshRight, Delete} from '@element-plus/icons-vue'
+import {Folder, Plus, RefreshRight, Delete, DataBoard, Refresh} from '@element-plus/icons-vue'
 import {Settings, MenuItem} from "../type/SettingsType.ts"
 import {loading} from "../util/loadIng.ts";
 import {useTheme} from "../util/theme.ts"
 import {useSettings} from "../store";
+import md5 from "md5";
 
 const props = defineProps<{
   modelValue: boolean
 }>()
 // 添加新的响应式变量
 const newPath = ref('')
-const { file } =window;
+const migrationLoading = ref(false)
+const statusLoading = ref(false)
+const { file } = window;
 const emit = defineEmits(['update:modelValue', 'scan-complete','callParentMethod'])
 const dialogVisible = computed({
   get: () => props.modelValue,
@@ -163,9 +240,10 @@ let settings = reactive<Settings>({
   rememberLastPlayed: false, // 记住上次播放位置
   scanPaths: [], // 扫描路径列表
   showTray:true, //是否启动托盘
-  minimization:true //是否关闭页面最小化
+  minimization:true, //是否关闭页面最小化
+  isRole:false, //是否启用密码
+  password:"" //密码
 })
-let counter:number=0//计数器
 const { setTheme } = useTheme(); //深色模式
 const toggleTheme = () => {
   setTheme(settings.theme);
@@ -259,8 +337,30 @@ let menuItem=reactive<MenuItem[]>([
         label: "服务端口",
         component: markRaw(ElInputNumber),
         props: { min: 1000, max: 65535, "controls-position": "right" }
+      },
+      {
+        key: "isRole",
+        label: "是否启用密码",
+        component: markRaw(ElSwitch),
+        props: {},
+      },
+      {
+        key:"password",
+        label:"密码",
+        component: markRaw(ElInput),
+        event:updatePass,
+        props:{
+          placeholder:"请输入密码",
+          type:"password"
+        }
       }
     ]
+  },
+  {
+    title: "数据库状态",
+    icon: "DataBoard",
+    index: "database",
+    isElectron: true,
   }
 ])
 const themeOptions=reactive([
@@ -272,25 +372,39 @@ const themeOptions=reactive([
 
 // 自动保存设置
 watch(settings, () => {
-  if (counter!==0){
-    saveSettings()
-  }
-   counter++
+    handleVolumeChange()
 })
 
 onMounted(() => {
   loading()
   if(isElectron){
     loadSettings()
-  }else {
-    // 合并默认设置和保存的设置
-    Object.assign(settings,settingsStore.settings)
   }
   loading().close()
 })
 
+//防抖
+function debounce(fn:Function, delay:number) {
+  let timer: any | null;
+  return function () {
+    if (timer) {
+      clearTimeout(timer);
+    }
+    timer = setTimeout(() => {
+      fn();
+    }, delay);
+  };
+}
+const handleVolumeChange = debounce(() => {
+  saveSettings(false)
+}, 500);
+
+
 const handleClose = () => {
   dialogVisible.value = false
+}
+function updatePass(){
+  saveSettings(true)
 }
 
 // 解析字符串为组件
@@ -363,10 +477,11 @@ const startScan = async () => {
 }
 
 // 修改保存设置方法
-const saveSettings = async () => {
+const saveSettings = async (state:boolean) => {
   try {
+    let newPass=state?md5(settings.password):settings.password
     // 确保传递的数据是可序列化的
-    const settingsToSave = {
+    const updateSettings = {
       theme: settings.theme,
       scanOnStartup: settings.scanOnStartup,
       scanInterval: settings.scanInterval,
@@ -377,11 +492,18 @@ const saveSettings = async () => {
       scanPaths: settings.scanPaths?.slice() || [],
       minimization: settings.minimization,
       showTray: settings.showTray,
+      isRole: settings.isRole
+    };
+
+    const settingsToSave = {
+      ...updateSettings,
+      password: newPass, // 保留原来的 password
     };
     settingsStore.updateSettings(settingsToSave)
-    settingsStore.updateSettings(settings)
-    if(isElectron)
+    if(isElectron){
       await file.saveSettings(settingsToSave)
+      settings.password=newPass
+    }
   } catch (error) {
     console.error('保存设置失败：', error)
     ElMessage.error('保存设置失败')
@@ -393,8 +515,12 @@ const loadSettings = async () => {
   try {
     const savedSettings = await file.loadSettings()
     if (savedSettings) {
-      // 合并默认设置和保存的设置
       Object.assign(settings,savedSettings)
+      settingsStore.updateSettings(savedSettings)
+    }else {
+      const saveLocal =localStorage.getItem('settings')?JSON.parse(localStorage.getItem('settings') as string):null;
+      Object.assign(settings,saveLocal)
+      settingsStore.updateSettings(saveLocal)
     }
   } catch (error) {
     console.error('加载设置失败：', error)
@@ -415,6 +541,54 @@ const scrollToSection = (sectionId: string) => {
     })
   }
 }
+
+// 数据库相关方法
+const triggerMigration = async () => {
+  if (!isElectron) return;
+  
+  migrationLoading.value = true;
+  try {
+    // 这里调用Electron的迁移API
+    const result = await file.triggerMigration?.();
+    if (result?.success) {
+      ElMessage.success('迁移完成');
+      await refreshDatabaseStatus();
+    } else {
+      ElMessage.error(result?.message || '迁移失败');
+    }
+  } catch (error: any) {
+    console.error('迁移失败:', error);
+    ElMessage.error('迁移失败: ' + error.message);
+  } finally {
+    migrationLoading.value = false;
+  }
+};
+
+const refreshDatabaseStatus = async () => {
+  if (!isElectron) return;
+  
+  statusLoading.value = true;
+  try {
+    // 获取数据库状态
+    const dbStatus = await file.getDatabaseStatus?.();
+    if (dbStatus) {
+      settingsStore.setDatabaseStatus(dbStatus);
+    }
+    
+    // 获取迁移状态
+    const migrationStatus = await file.getMigrationStatus?.();
+    if (migrationStatus) {
+      settingsStore.setMigrationStatus(migrationStatus);
+    }
+    
+    ElMessage.success('状态更新成功');
+  } catch (error: any) {
+    console.error('获取状态失败:', error);
+    ElMessage.error('获取状态失败: ' + error.message);
+  } finally {
+    statusLoading.value = false;
+  }
+};
 </script>
 
 <style lang="scss" scoped>
@@ -736,5 +910,80 @@ const scrollToSection = (sectionId: string) => {
   top: 50%;
   left: 50%;
   transform: translate(-50%, -50%);
+}
+
+/* 数据库状态样式 */
+.database-status-container {
+  margin-top: 1rem;
+}
+
+.status-card {
+  .card-header {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    font-weight: 600;
+  }
+}
+
+.status-grid {
+  display: grid;
+  gap: 1rem;
+  margin-bottom: 1rem;
+}
+
+.status-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 0.5rem 0;
+  border-bottom: 1px solid var(--border-color-effect);
+
+  &:last-child {
+    border-bottom: none;
+  }
+
+  .status-label {
+    font-weight: 500;
+    color: var(--text-color);
+  }
+
+  .status-value {
+    color: var(--text-secondary);
+    font-size: 0.9rem;
+  }
+}
+
+.error-alert {
+  margin: 1rem 0;
+}
+
+.action-buttons {
+  display: flex;
+  gap: 0.5rem;
+  justify-content: flex-end;
+  margin-top: 1rem;
+  padding-top: 1rem;
+  border-top: 1px solid var(--border-color-effect);
+}
+
+@media (max-width: 768px) {
+  .status-grid {
+    gap: 0.5rem;
+  }
+  
+  .status-item {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 0.3rem;
+  }
+  
+  .action-buttons {
+    flex-direction: column;
+    
+    .el-button {
+      width: 100%;
+    }
+  }
 }
 </style>

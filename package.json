@@ -1,18 +1,62 @@
 {
   "name": "friendship-network",
   "productName": "friendship-network",
-  "private": true,
+  "description": "A desktop application for LAN media sharing built with Electron, Vue 3, and TypeScript",
   "version": "0.0.2",
+  "private": true,
   "type": "module",
+  "author": {
+    "name": "YiZi",
+    "email": "yizi@example.com"
+  },
+  "license": "MIT",
+  "homepage": "https://github.com/ZZyizi/friendship-network#readme",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/ZZyizi/friendship-network.git"
+  },
+  "bugs": {
+    "url": "https://github.com/ZZyizi/friendship-network/issues"
+  },
+  "keywords": [
+    "electron",
+    "vue3",
+    "media-sharing",
+    "lan",
+    "desktop-app",
+    "typescript"
+  ],
   "scripts": {
     "dev": "chcp 65001 & vite ",
-    "check": "electron --trace-deprecation dist-electron/main.js",
     "build": "vite build",
+    "build:prod": "cross-env NODE_ENV=production vite build",
     "preview": "vite preview",
     "start": "chcp 65001 && electron .",
+    "start:prod": "cross-env NODE_ENV=production electron .",
     "pack": "electron-builder --dir",
     "packW": "electron-builder --win",
-    "packM": "electron-builder --mac"
+    "packM": "electron-builder --mac",
+    "packL": "electron-builder --linux",
+    "dist": "npm run build:prod && electron-builder",
+    "dist:win": "npm run build:prod && electron-builder --win",
+    "dist:mac": "npm run build:prod && electron-builder --mac",
+    "dist:linux": "npm run build:prod && electron-builder --linux",
+    "test": "node tests/run-tests.js",
+    "test:unit": "node tests/run-tests.js --type unit",
+    "test:integration": "node tests/run-tests.js --type integration",
+    "test:edge": "node tests/run-tests.js --type edge",
+    "test:coverage": "node tests/run-tests.js --coverage",
+    "test:watch": "node tests/run-tests.js --watch",
+    "test:ci": "node tests/run-tests.js --coverage --bail --reporter json",
+    "test:ui": "npx vitest --ui",
+    "clean": "rimraf dist dist-electron friendship-network",
+    "clean:cache": "rimraf node_modules/.vite node_modules/.cache",
+    "clean:all": "npm run clean && npm run clean:cache && rimraf node_modules",
+    "electron:install": "cross-env ELECTRON_MIRROR=https://npmmirror.com/mirrors/electron/ node node_modules/electron/install.js",
+    "postinstall": "npm run electron:install && electron-builder install-app-deps",
+    "version:patch": "npm version patch",
+    "version:minor": "npm version minor",
+    "version:major": "npm version major"
   },
   "build": {
     "appId": "com.yizi.friendship",
@@ -57,25 +101,30 @@
   },
   "dependencies": {
     "@element-plus/icons-vue": "^2.3.1",
-    "@types/better-sqlite3": "^7.6.12",
     "@types/fluent-ffmpeg": "^2.1.27",
     "axios": "^1.7.9",
     "element-plus": "^2.9.3",
-    "esbuild": "latest",
     "express": "^4.21.2",
     "fluent-ffmpeg": "^2.1.3",
     "iconv-lite": "^0.6.3",
     "local-devices": "^4.0.0",
+    "md5": "^2.3.0",
     "music-metadata": "^7.0.0",
+    "node-ssdp": "^4.0.1",
     "pinia": "^3.0.1",
     "uuid": "^11.0.5",
     "vue": "^3.4.21",
-    "vue-router": "^4.5.0"
+    "vue-router": "^4.5.0",
+    "xmlbuilder": "^15.1.1"
   },
   "devDependencies": {
     "@types/cors": "^2.8.17",
     "@types/express": "^5.0.0",
+    "@types/md5": "^2.3.5",
+    "@types/node-ssdp": "^4.0.4",
     "@vitejs/plugin-vue": "^5.0.4",
+    "@vitest/coverage-v8": "^3.2.4",
+    "@vitest/ui": "^3.2.4",
     "cross-env": "^7.0.3",
     "electron": "^30.0.1",
     "electron-builder": "^24.13.3",
@@ -89,7 +138,8 @@
     "vite-plugin-electron": "^0.28.6",
     "vite-plugin-electron-renderer": "^0.14.5",
     "vite-plugin-require": "^1.2.14",
-    "vite-plugin-static-copy": "^2.2.0"
+    "vite-plugin-static-copy": "^2.2.0",
+    "vitest": "^3.2.4"
   },
   "main": "dist/main.js"
 }

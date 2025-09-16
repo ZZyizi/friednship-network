@@ -63,7 +63,16 @@ export default defineConfig({
         vite: {
           build: {
             outDir: 'dist',
+            rollupOptions: {
+              external: ['electron'],
+              output: {
+                format: 'es'
+              }
+            }
           },
+          esbuild: {
+            target: 'node18'
+          }
         }
       },
       preload: {
@@ -71,7 +80,16 @@ export default defineConfig({
         vite: {
           build: {
             outDir: 'dist',
+            rollupOptions: {
+              external: ['electron'],
+              output: {
+                format: 'es'
+              }
+            }
           },
+          esbuild: {
+            target: 'node18'
+          }
         }
       },
       renderer: process.env.NODE_ENV === 'test'

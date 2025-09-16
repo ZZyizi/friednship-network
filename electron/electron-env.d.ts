@@ -21,6 +21,12 @@ declare namespace NodeJS {
   }
 }
 
+// Global variables for ES modules compatibility
+declare global {
+  var __filename: string;
+  var __dirname: string;
+}
+
 // Used in Renderer process, expose in `index.ts`
 interface Window {
   api:any,

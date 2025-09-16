@@ -1,7 +1,7 @@
 import os from 'node:os'
 import electron, {nativeTheme,clipboard } from "electron";
 import {startServer} from "../../services.ts";
-import {configData, getConfigData} from "../../common/file/searchFile.ts";
+import {configData, getConfigData} from "../../common/file";
 import {getLocalDevices} from "../../common/network";
 import {CACHE_FILE_PATH} from "../../main.ts";
 import {isServerRunning, setIsServerRunning} from "../../main/tray";

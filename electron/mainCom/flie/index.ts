@@ -1,12 +1,14 @@
 import electron, {dialog} from "electron";
 import {FileInter} from "../../../src/api/medium/type.ts";
 import {
+    cleanClassify,
     findAllMusicFiles,
     loadCacheFromFile,
-    saveCacheToFile, saveConfigData,
-} from "../../common/file/searchFile.ts";
+    saveCacheToFile, saveConfigData
+} from "../../common/file";
 import fs from "fs/promises";
 import {CACHE_FILE_PATH, SETTINGS_FILE_PATH} from "../../main.ts";
+import { imageManager } from "../../common/image";
 
 function writeFile(_:electron.IpcMainEvent,data:string){
     console.log(data)
@@ -22,7 +24,8 @@ async function startScan(_: electron.Event,scanPaths:string){
     if (scanPaths && scanPaths.length > 0) {
         try{
             const data=await findAllMusicFiles(JSON.parse(scanPaths))
-            saveCacheToFile(CACHE_FILE_PATH,data)
+            await saveCacheToFile(CACHE_FILE_PATH,data)
+            await cleanClassify()
             return { success: true ,message:`扫描到了${data.length}个媒体文件` }
         }catch (error) {
             console.error('扫描失败:', error)
@@ -69,6 +72,8 @@ async function loadSettings(){
         return null
     }
 }
+
+
 export {
     writeFile, readFile, startScan, searchFile,
     selectDirectory, loadSettings, saveSettings,
