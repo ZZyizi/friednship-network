@@ -8,7 +8,21 @@ export const useSettings = defineStore(
     'UseSettings',
     {
         state: () => {
-            let settings = reactive<Settings>(localStorage.getItem('settings') ? JSON.parse(localStorage.getItem('settings') as string) : {
+            // 安全地从 localStorage 解析设置
+            let parsedSettings: Settings | null = null;
+            const storedSettings = localStorage.getItem('settings');
+
+            if (storedSettings) {
+                try {
+                    parsedSettings = JSON.parse(storedSettings);
+                } catch (error) {
+                    console.warn('[SettingsStore] localStorage 中的设置数据无效，使用默认值:', error);
+                    // 清除无效数据
+                    localStorage.removeItem('settings');
+                }
+            }
+
+            let settings = reactive<Settings>(parsedSettings || {
                 port: 3000,// 端口
                 theme: 'light',// 主题
                 scanOnStartup: false,// 扫描启动
@@ -74,23 +88,26 @@ export const useSettings = defineStore(
         
         actions: {
             // 更新设置 (增强版)
-            updateSettings(data: Settings | null) {
+            updateSettings(data: Settings | null, silent: boolean = false) {
                 if (!data) return;
-                
+
                 try {
                     // 验证设置数据
                     this.validateSettings(data);
-                    
+
                     // 更新状态
                     Object.assign(this.settings, data);
-                    
+
                     // 持久化到本地存储
                     localStorage.setItem('settings', JSON.stringify(this.settings));
-                    
+
                     // 清除错误
                     this.clearSettingsError();
-                    
-                    console.log('设置更新成功');
+
+                    // 只在非静默模式下输出日志
+                    if (!silent) {
+                        console.log('设置更新成功');
+                    }
                 } catch (error: any) {
                     console.error('更新设置失败:', error);
                     this.setSettingsError(error.message || '更新设置失败');

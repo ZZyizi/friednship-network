@@ -183,8 +183,8 @@
                         开始迁移
                       </el-button>
                       
-                      <el-button 
-                        @click="refreshDatabaseStatus"
+                      <el-button
+                        @click="refreshDatabaseStatus(true)"
                         :loading="statusLoading"
                       >
                         <el-icon><RefreshRight /></el-icon>
@@ -204,7 +204,7 @@
 </template>
 
 <script setup lang="ts">
-import {ref, reactive, computed, onMounted, watch, markRaw} from 'vue'
+import {ref, reactive, computed, onMounted, watch, markRaw, nextTick} from 'vue'
 import {ElInput, ElInputNumber, ElMessage, ElSelect, ElSlider, ElSwitch} from "element-plus";
 import * as Icons from "@element-plus/icons-vue";
 import {Folder, Plus, RefreshRight, Delete, DataBoard, Refresh} from '@element-plus/icons-vue'
@@ -221,7 +221,7 @@ const props = defineProps<{
 const newPath = ref('')
 const migrationLoading = ref(false)
 const statusLoading = ref(false)
-const { file } = window;
+const isLoadingSettings = ref(false) // 标志位：是否正在加载设置
 const emit = defineEmits(['update:modelValue', 'scan-complete','callParentMethod'])
 const dialogVisible = computed({
   get: () => props.modelValue,
@@ -370,15 +370,88 @@ const themeOptions=reactive([
 ])
 
 
-// 自动保存设置
+// 自动保存设置（仅在用户主动修改时触发，加载设置时不触发）
 watch(settings, () => {
-    handleVolumeChange()
+    // 如果正在加载设置，不触发自动保存
+    if (!isLoadingSettings.value) {
+        handleVolumeChange()
+    }
 })
+
+// 数据库相关方法
+const refreshDatabaseStatus = async (showMessage = false) => {
+  if (!isElectron) return;
+
+  // 检查 Electron API 是否就绪
+  if (!window.file) {
+    console.warn('[SettingsDialog] Electron API 未就绪');
+    return;
+  }
+
+  if (showMessage) {
+    statusLoading.value = true;
+  }
+
+  try {
+    // 获取数据库状态
+    const dbStatus = await window.file.getDatabaseStatus();
+    if (dbStatus) {
+      settingsStore.setDatabaseStatus(dbStatus);
+    }
+
+    // 获取迁移状态
+    const migrationStatus = await window.file.getMigrationStatus();
+    if (migrationStatus) {
+      settingsStore.setMigrationStatus(migrationStatus);
+    }
+
+    if (showMessage) {
+      ElMessage.success('状态更新成功');
+    }
+  } catch (error: any) {
+    console.error('获取数据库状态失败:', error);
+    if (showMessage) {
+      ElMessage.error('获取状态失败: ' + error.message);
+    }
+  } finally {
+    if (showMessage) {
+      statusLoading.value = false;
+    }
+  }
+};
+
+const triggerMigration = async () => {
+  if (!isElectron) return;
+
+  // 检查 Electron API 是否就绪
+  if (!window.file) {
+    ElMessage.error('Electron API 未就绪');
+    return;
+  }
+
+  migrationLoading.value = true;
+  try {
+    const result = await window.file.triggerMigration();
+    if (result?.success) {
+      ElMessage.success('迁移完成');
+      await refreshDatabaseStatus();
+    } else {
+      ElMessage.error(result?.message || '迁移失败');
+    }
+  } catch (error: any) {
+    console.error('迁移失败:', error);
+    ElMessage.error('迁移失败: ' + error.message);
+  } finally {
+    migrationLoading.value = false;
+  }
+};
 
 onMounted(() => {
   loading()
   if(isElectron){
     loadSettings()
+    // 加载数据库状态
+    refreshDatabaseStatus()
   }
   loading().close()
 })
@@ -396,7 +469,10 @@ function debounce(fn:Function, delay:number) {
   };
 }
 const handleVolumeChange = debounce(() => {
-  saveSettings(false)
+  // 即使在 debounce 后执行，也要检查是否在加载设置期间
+  if (!isLoadingSettings.value) {
+    saveSettings(false)
+  }
 }, 500);
 
 
@@ -419,7 +495,12 @@ const addScanPath = async (path?: string) => {
 
     if (!path) {
       // 如果没有传入路径参数，说明是通过选择框添加
-      const result = await file.selectDirectory()
+      // 检查 Electron API 是否就绪
+      if (!window.file) {
+        ElMessage.error('Electron API 未就绪')
+        return
+      }
+      const result = await window.file.selectDirectory()
       if (result.canceled) return
       pathToAdd = result.filePaths[0]
     }
@@ -462,8 +543,15 @@ const startScan = async () => {
     ElMessage.warning('请先添加扫描路径')
     return
   }
+
+  // 检查 Electron API 是否就绪
+  if (!window.file) {
+    ElMessage.error('Electron API 未就绪')
+    return
+  }
+
   loading()
-  const status=await file.startScan(JSON.stringify(settings.scanPaths))
+  const status = await window.file.startScan(JSON.stringify(settings.scanPaths))
   if(status){
     //调用父组件的方法
     setTimeout(()=>{
@@ -479,7 +567,6 @@ const startScan = async () => {
 // 修改保存设置方法
 const saveSettings = async (state:boolean) => {
   try {
-    let newPass=state?md5(settings.password):settings.password
     // 确保传递的数据是可序列化的
     const updateSettings = {
       theme: settings.theme,
@@ -495,14 +582,23 @@ const saveSettings = async (state:boolean) => {
       isRole: settings.isRole
     };
 
-    const settingsToSave = {
-      ...updateSettings,
-      password: newPass, // 保留原来的 password
-    };
-    settingsStore.updateSettings(settingsToSave)
+    // 只有在 state=true（用户明确修改密码）时才保存密码字段
+    if (state) {
+      const newPass = md5(settings.password);
+      updateSettings.password = newPass;
+      settings.password = newPass; // 更新本地状态
+      console.log('[SettingsDialog] 密码已加密并保存');
+    }
+
+    settingsStore.updateSettings(updateSettings)
     if(isElectron){
-      await file.saveSettings(settingsToSave)
-      settings.password=newPass
+      // 检查 Electron API 是否就绪
+      if (!window.file) {
+        ElMessage.error('Electron API 未就绪，无法保存设置');
+        return;
+      }
+      await window.file.saveSettings(updateSettings)
+      console.log('[SettingsDialog] 设置已保存（不包括密码）');
     }
   } catch (error) {
     console.error('保存设置失败：', error)
@@ -513,18 +609,40 @@ const saveSettings = async (state:boolean) => {
 // 获取加载设置方法
 const loadSettings = async () => {
   try {
-    const savedSettings = await file.loadSettings()
+    // 设置标志位，防止触发自动保存
+    isLoadingSettings.value = true
+
+    // 检查 Electron API 是否就绪
+    if (!window.file) {
+      console.warn('[SettingsDialog] Electron API 未就绪，使用本地缓存')
+      const saveLocal = localStorage.getItem('settings') ? JSON.parse(localStorage.getItem('settings') as string) : null;
+      Object.assign(settings, saveLocal)
+      settingsStore.updateSettings(saveLocal, true)  // 静默模式
+      return;
+    }
+
+    const savedSettings = await window.file.loadSettings()
     if (savedSettings) {
-      Object.assign(settings,savedSettings)
-      settingsStore.updateSettings(savedSettings)
+      // 使用 Object.assign 合并设置
+      Object.assign(settings, savedSettings)
+      settingsStore.updateSettings(savedSettings, true)  // 静默模式
+      console.log('[SettingsDialog] 从后端加载设置成功')
     }else {
-      const saveLocal =localStorage.getItem('settings')?JSON.parse(localStorage.getItem('settings') as string):null;
-      Object.assign(settings,saveLocal)
-      settingsStore.updateSettings(saveLocal)
+      // 如果后端返回空，使用 localStorage 中的值
+      const saveLocal = localStorage.getItem('settings') ? JSON.parse(localStorage.getItem('settings') as string) : null;
+      Object.assign(settings, saveLocal)
+      settingsStore.updateSettings(saveLocal, true)  // 静默模式
+      console.log('[SettingsDialog] 使用本地缓存设置')
     }
   } catch (error) {
     console.error('加载设置失败：', error)
     ElMessage.error('加载设置失败')
+  } finally {
+    // 等待 nextTick 和 debounce 延迟后再恢复标志位
+    await nextTick()
+    setTimeout(() => {
+      isLoadingSettings.value = false
+    }, 600)  // 比 debounce 的 500ms 稍长一点
   }
 }
 const activeSection = ref('basic')
@@ -541,54 +659,6 @@ const scrollToSection = (sectionId: string) => {
     })
   }
 }
-
-// 数据库相关方法
-const triggerMigration = async () => {
-  if (!isElectron) return;
-  
-  migrationLoading.value = true;
-  try {
-    // 这里调用Electron的迁移API
-    const result = await file.triggerMigration?.();
-    if (result?.success) {
-      ElMessage.success('迁移完成');
-      await refreshDatabaseStatus();
-    } else {
-      ElMessage.error(result?.message || '迁移失败');
-    }
-  } catch (error: any) {
-    console.error('迁移失败:', error);
-    ElMessage.error('迁移失败: ' + error.message);
-  } finally {
-    migrationLoading.value = false;
-  }
-};
-
-const refreshDatabaseStatus = async () => {
-  if (!isElectron) return;
-  
-  statusLoading.value = true;
-  try {
-    // 获取数据库状态
-    const dbStatus = await file.getDatabaseStatus?.();
-    if (dbStatus) {
-      settingsStore.setDatabaseStatus(dbStatus);
-    }
-    
-    // 获取迁移状态
-    const migrationStatus = await file.getMigrationStatus?.();
-    if (migrationStatus) {
-      settingsStore.setMigrationStatus(migrationStatus);
-    }
-    
-    ElMessage.success('状态更新成功');
-  } catch (error: any) {
-    console.error('获取状态失败:', error);
-    ElMessage.error('获取状态失败: ' + error.message);
-  } finally {
-    statusLoading.value = false;
-  }
-};
 </script>
 
 <style lang="scss" scoped>

@@ -1,0 +1,32 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(tree:*)",
+      "Bash(npm install:*)",
+      "Bash(pnpm install:*)",
+      "Bash(node scripts/database-test.js)",
+      "Bash(node scripts/check-modules.js:*)",
+      "Bash(pnpm rebuild:*)",
+      "Bash(pnpm add:*)",
+      "Bash(pnpm approve-builds:*)",
+      "Bash(pnpm remove:*)",
+      "Bash(pnpm run dev)",
+      "Bash(git checkout:*)",
+      "Bash(node:*)",
+      "Bash(npx node-gyp rebuild:*)",
+      "Bash(dir node_modules.pnpmbetter-sqlite3@9.6.0node_modulesbetter-sqlite3)",
+      "Bash(dir \"node_modules\\.pnpm\\better-sqlite3@9.6.0\\node_modules\\better-sqlite3\")",
+      "Bash(npm run build-release:*)",
+      "Bash(dir \"C:\\Users\\yan\\AppData\\Roaming\\friendship-network\")",
+      "Bash(dir:*)",
+      "Bash(taskkill:*)",
+      "Bash(npm run install:*)",
+      "Bash(copy:*)",
+      "Bash(npm run build:prod:*)",
+      "Bash(\"node_modules/.pnpm/electron@30.5.1/node_modules/electron/dist/electron.exe\" .)",
+      "Bash(npm run build:*)"
+    ],
+    "deny": [],
+    "ask": []
+  }
+}

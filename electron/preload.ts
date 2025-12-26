@@ -6,7 +6,20 @@ import {
   saveSettings,
   loadSettings,
   selectDirectory,
-  loadFileCache, startScan
+  loadFileCache,
+  startScan,
+  getDatabaseStatus,
+  getMigrationStatus,
+  initializeDatabase,
+  performMigration,
+  triggerMigration,
+  rollbackMigration,
+  setDatabaseMode,
+  getMediaStats,
+  searchMediaFiles,
+  getImageStats,
+  cleanImageCache,
+  getVersionCompatibility
 } from "./preload/file";
 import {getConfig, start, theme, copy, getLoadNet, getStartServer} from "./preload/config";
 
@@ -38,7 +51,20 @@ contextBridge.exposeInMainWorld('file', {
   loadSettings,
   loadFileCache,
   selectDirectory,
-  startScan
+  startScan,
+  // 数据库相关API
+  getDatabaseStatus,
+  getMigrationStatus,
+  initializeDatabase,
+  performMigration,
+  triggerMigration,
+  rollbackMigration,
+  setDatabaseMode,
+  getMediaStats,
+  searchMediaFiles,
+  getImageStats,
+  cleanImageCache,
+  getVersionCompatibility
 })
 contextBridge.exposeInMainWorld('config', {
   getConfig,

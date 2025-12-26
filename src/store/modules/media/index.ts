@@ -122,13 +122,18 @@ export const useMedia = defineStore("useMedia", {
         async routerUpdateFile(label: string) {
             this.setLoading(true)
             this.clearError()
-            
+
             try {
-                const { file } = window;
                 let resD: FileInter[] = [];
-                
+
                 if (this.isElectron) {
                     // Electron环境：使用文件API
+                    // 检查 window.file 是否存在
+                    if (!window.file) {
+                        throw new Error('Electron API 未就绪，请确保应用正常运行')
+                    }
+
+                    const { file } = window;
                     resD = await file.loadFileCache(label)
                     if (!resD) {
                         throw new Error('无法从本地缓存加载数据')
@@ -140,24 +145,24 @@ export const useMedia = defineStore("useMedia", {
                         3,
                         1000
                     )
-                    
+
                     if (!response?.success) {
                         throw new Error(response?.error || '获取媒体数据失败')
                     }
-                    
+
                     resD = response.data || []
                 }
-                
+
                 // 验证数据格式
                 if (!Array.isArray(resD)) {
                     throw new Error('接收到的数据格式不正确')
                 }
-                
+
                 this.setMediaData(resD)
-                
+
                 // 更新统计信息
                 await this.updateMediaStats()
-                
+
             } catch (error: any) {
                 console.error('更新媒体文件失败:', error)
                 this.setError(error.message || '更新媒体文件失败')

@@ -10,6 +10,23 @@ import {
     searchFile
 } from "./flie";
 import {copy, getIp, getLoadNet, getStartServer, start, theme} from "./config";
+import {
+    getDatabaseStatus,
+    getMigrationStatus,
+    initializeDatabase,
+    performMigration,
+    rollbackMigration,
+    setDatabaseMode,
+    getMediaStats,
+    searchMediaFiles,
+    getImageStats,
+    cleanImageCache,
+    getVersionCompatibility,
+    optimizeDatabase,
+    getArtistList,
+    getAlbumList,
+    getFileFormatStats
+} from "./database";
 
 function file() {
     // 原有的文件操作
@@ -34,9 +51,35 @@ function Theme(){
     ipcMain.handle('theme-changed',theme)//获取主题
 }
 
+function database(){
+    // 数据库状态相关
+    ipcMain.handle('db-get-status', getDatabaseStatus)
+    ipcMain.handle('db-get-migration-status', getMigrationStatus)
+    ipcMain.handle('db-initialize', initializeDatabase)
+    ipcMain.handle('db-perform-migration', performMigration)
+    ipcMain.handle('db-rollback-migration', rollbackMigration)
+    ipcMain.handle('db-set-mode', setDatabaseMode)
+
+    // 统计信息相关
+    ipcMain.handle('db-get-media-stats', getMediaStats)
+    ipcMain.handle('db-search-media', searchMediaFiles)
+    ipcMain.handle('db-get-image-stats', getImageStats)
+    ipcMain.handle('db-clean-image-cache', cleanImageCache)
+    ipcMain.handle('db-get-version-compatibility', getVersionCompatibility)
+
+    // 数据库维护
+    ipcMain.handle('db-optimize', optimizeDatabase)
+
+    // 数据查询
+    ipcMain.handle('db-get-artists', getArtistList)
+    ipcMain.handle('db-get-albums', getAlbumList)
+    ipcMain.handle('db-get-format-stats', getFileFormatStats)
+}
+
 export function mainCom(){
     file()
     config()
     Theme()
+    database()
 }
 

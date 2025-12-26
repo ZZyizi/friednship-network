@@ -4,15 +4,15 @@
     <div class="wall-content">
       <div class="wall-grid">
         <div v-for="item in filteredItems"
-             :key="item.picture"
+             :key="item.Url"
              class="wall-card glass-effect"
              @click="handleCardClick(item)">
           <div class="card-image">
-            <img :src="item.picture" :alt="item.prepose">
+            <img :src="item.info?.picture || item.classify?.picture || '/default-cover.jpg'" :alt="item.Name">
           </div>
           <div class="card-info">
-            <h3>{{ item.prepose }}</h3>
-            <p class="date">{{ item.year }}-{{ item.month }}-{{ item.day }}</p>
+            <h3>{{ item.classify?.prepose || item.info?.artist || item.Name }}</h3>
+            <p class="date">{{ item.classify?.year || '-' }}-{{ item.classify?.month || '-' }}-{{ item.classify?.day || '-' }}</p>
           </div>
         </div>
       </div>
@@ -21,42 +21,31 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed,onMounted } from 'vue'
-import {useMedia} from "../store";
+import { computed, onMounted } from 'vue'
+import { useMedia } from "../store";
 import HeadLayout from "../components/layout/HeadLayout.vue";
-import {WallItem} from "../type/willType.ts";
 
-const useMediaStore=useMedia()
-const items = ref<WallItem[]>([
-  {
-    year: "2025",
-    month: "02",
-    day: "28",
-    prepose: "miracle竹夭",
-    picture: "D:\\project\\final\\friendship\\friendship-network\\dist\\cache\\data\\e88899adef883baee8f10a9846167f27475c79c7bb453ec3d9b9a60acaca6755.jpg"
-  },
-  {
-    year: "2025",
-    month: "02",
-    day: "09",
-    prepose: "Sugar爱吃糖",
-    picture: "D:\\project\\final\\friendship\\friendship-network\\dist\\cache\\data\\92b8dc25f338038d832e6a6f1be946cb1034bd4cb61845da2237115cf5fa083d.jpg"
-  }
-])
+const useMediaStore = useMedia()
+
+// Filter media files that have classify data (for wall display)
+const wallItems = computed(() => {
+  return useMediaStore.MediaData.filter(item => item.classify)
+})
 
 const filteredItems = computed(() => {
   const query = useMediaStore.searchQuery.toLowerCase().trim()
-  if (!query) return items.value
-  return items.value.filter(item =>
-    item.prepose.toLowerCase().includes(query)
+  if (!query) return wallItems.value
+  return wallItems.value.filter(item =>
+    item.classify?.prepose.toLowerCase().includes(query) ||
+    item.Name.toLowerCase().includes(query)
   )
 })
 
-onMounted(async ()=>{
+onMounted(async () => {
   await useMediaStore.routerUpdateFile('all')
 })
 
-const handleCardClick = (item: WallItem) => {
+const handleCardClick = (item: any) => {
   // 处理卡片点击事件
   console.log('Clicked item:', item)
 }

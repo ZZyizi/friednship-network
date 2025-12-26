@@ -43,8 +43,27 @@ const mediaStore=useMedia()
 const MediaChildRef=ref<typeof MediaPlayer>()//定义组件的ref
 const lastTime=localStorage.getItem("currentTime")?JSON.parse(localStorage.getItem("currentTime") as string):0
 
-onMounted( ()=>{
-  load()
+// 从后端加载设置
+const loadSettingsFromBackend = async () => {
+  if (!isElectron) return;
+
+  try {
+    const { file } = window;
+    const savedSettings = await file.loadSettings();
+    if (savedSettings) {
+      // 静默模式更新设置（不输出日志）
+      settingsStore.updateSettings(savedSettings, true);
+      console.log('[App] 从后端加载设置成功:', savedSettings);
+    }
+  } catch (error) {
+    console.warn('[App] 从后端加载设置失败，使用本地缓存:', error);
+  }
+};
+
+onMounted( async ()=>{
+  // 先从后端加载设置，再执行其他初始化
+  // await loadSettingsFromBackend();
+  load();
   window.addEventListener("beforeunload", handleBeforeUnload, { passive: false });//挂载方法
 })
 //刷新页面时候

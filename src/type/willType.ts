@@ -1,7 +1,1 @@
-export interface WallItem {
-    year: string
-    month: string
-    day: string
-    prepose: string
-    picture: string
-}
+// WallItem type removed - using FileInter from api/medium/type.ts instead

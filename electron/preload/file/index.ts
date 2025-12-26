@@ -42,6 +42,11 @@ function performMigration() {
     return ipcRenderer.invoke('db-perform-migration')
 }
 
+// 别名：兼容前端代码中的 triggerMigration
+function triggerMigration() {
+    return performMigration()
+}
+
 function rollbackMigration() {
     return ipcRenderer.invoke('db-rollback-migration')
 }
@@ -75,7 +80,7 @@ export {
     saveSettings, loadSettings, selectDirectory, startScan,
     // 新增的数据库操作
     getDatabaseStatus, getMigrationStatus, initializeDatabase,
-    performMigration, rollbackMigration, setDatabaseMode,
+    performMigration, triggerMigration, rollbackMigration, setDatabaseMode,
     getMediaStats, searchMediaFiles, getImageStats,
     cleanImageCache, getVersionCompatibility
 }

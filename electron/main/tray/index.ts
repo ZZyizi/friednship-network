@@ -3,10 +3,10 @@ import {BrowserWindow, clipboard, Menu, nativeImage, Tray, Notification,app} fro
 import path from "node:path";
 import os from "node:os";
 import {startServer} from "../../services.ts";
-import {CACHE_FILE_PATH, SETTINGS_FILE_PATH, win} from "../../main.ts";
+import {win} from "../../main.ts";
 import {configData} from "../../common/file";
-import fs from "fs";
 import {setServerRunning} from "../../mainCom/config";
+import { databaseService } from "../../common/database";
 
 // 获取网络接口信息
 const networkInterfaces = os.networkInterfaces();
@@ -77,7 +77,7 @@ export function createTray(win: BrowserWindow, app: Electron.App) {
                                         icon: path.join(process.env.VITE_PUBLIC!, 'favicon.ico'),
                                     }).show();
                                 } else {
-                                    expressServer = await startServer(configData?.port || 3000, CACHE_FILE_PATH);
+                                    expressServer = await startServer(configData?.port || 3000);
                                     isServerRunning = true;
                                     setServerRunning(expressServer)
                                     new Notification({
@@ -134,16 +134,11 @@ export function destroyTray() {
     }
 }
 
-// 监听文件变化
+// 配置变化时更新托盘（从数据库模式切换后，不再监听文件）
 export function watchConfig(win: BrowserWindow, app: Electron.App) {
-    fs.watch(SETTINGS_FILE_PATH, (eventType) => {
-        if (eventType === 'change') {
-            destroyTray()//销毁托盘
-            if(configData?.showTray){
-                createTray(win,app);//创建托盘
-            }else {
-                destroyTray()//销毁托盘
-            }
-        }
-    });
+    // 初始创建托盘
+    if(configData?.showTray){
+        createTray(win, app);
+    }
+    // 注意：设置更改后通过数据库API调用，需要手动调用此函数来更新托盘
 }

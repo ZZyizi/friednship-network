@@ -3,7 +3,6 @@ import electron, {nativeTheme,clipboard } from "electron";
 import {startServer} from "../../services.ts";
 import {configData, getConfigData} from "../../common/file";
 import {getLocalDevices} from "../../common/network";
-import {CACHE_FILE_PATH} from "../../main.ts";
 import {isServerRunning, setIsServerRunning} from "../../main/tray";
 
 let expressServer:any=null
@@ -46,7 +45,7 @@ async function start(_: electron.Event,data:number) {
             return {success:false, message:"请先设置端口"}
         }
         if (!expressServer){
-            expressServer = await startServer(port,CACHE_FILE_PATH)
+            expressServer = await startServer(port)
             setIsServerRunning(true,expressServer)
             return {success:true, message:`启动成功 port:${expressServer.address().port}`}
         }

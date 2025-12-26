@@ -2,18 +2,21 @@ import express from "express";
 import {configData, loadCacheFromFile,getConfigData} from "../../common/file";
 import {FileInter} from "../../../src/api/medium/type.ts";
 import fs from "fs";
-import { basename,join } from "path";
+import { basename } from "path";
 import { imageManager } from "../../common/image";
 
-export function file(appExpress:express.Express,path:string){
+export function file(appExpress:express.Express){
     appExpress.get('/file', async (req, res) => {
         // 执行脚本
         const clientIp = req.hostname;//获取前端请求的ip
         const key=req.query.key?.toString();
-        if (!key) {res.send(null);return;}
+        if (!key) {
+            res.json({ success: false, error: 'Missing key parameter' });
+            return;
+        }
         await getConfigData()
         const port = configData?configData.port as number:3000;
-        const data:FileInter[]|null= await loadCacheFromFile(path,key)
+        const data:FileInter[]|null= await loadCacheFromFile(key)
         data?.forEach((item)=>{
             const to= item.info?.picture
             const encodedValue = encodeURIComponent(item.Url);
@@ -22,46 +25,54 @@ export function file(appExpress:express.Express,path:string){
                 item.info.picture=item.info&&item.info.picture?`http://${clientIp}:${port}/img/${basename(to)}`:null;
             }
         })
-        res.send({ data })
+        res.json({ success: true, data })
     });
     appExpress.get('/img/:name', async (req, res) => {
-        const name= req.params.name;
-        
+        const name = req.params.name;
+
         try {
-            let imagePath: string;
-            
-            // 尝试通过 ImageManager 获取图片
+            let imagePath: string | null = null;
+
+            // 方法1: 通过相对路径查找 (images/xxx.png)
             const imageInfo = imageManager.getImageInfo(name);
             if (imageInfo && imageInfo.cachedPath && fs.existsSync(imageInfo.cachedPath)) {
                 imagePath = imageInfo.cachedPath;
-            } else {
-                // 尝试通过文件名查找
+                console.log(`[IMG] 通过相对路径找到图片: ${name} -> ${imagePath}`);
+            }
+
+            // 方法2: 通过文件名查找 (xxx.png)
+            if (!imagePath) {
                 const hash = name.split('.')[0]; // 移除扩展名获取哈希
                 const foundImageInfo = imageManager.getImageInfo(hash);
                 if (foundImageInfo && foundImageInfo.cachedPath && fs.existsSync(foundImageInfo.cachedPath)) {
                     imagePath = foundImageInfo.cachedPath;
-                } else {
-                    // 回退到传统路径查找
-                    imagePath = join(path,'..','data',name);
-                    if (!fs.existsSync(imagePath)) {
-                        res.status(404).json({ error: 'Image file not found' });
-                        return;
-                    }
+                    console.log(`[IMG] 通过哈希找到图片: ${hash} -> ${imagePath}`);
                 }
             }
-            
+
+            // 如果都找不到，返回 404
+            if (!imagePath) {
+                console.warn(`[IMG] 图片未找到: ${name}`);
+                res.status(404).json({
+                    error: 'Image not found',
+                    name: name,
+                    message: `图片 ${name} 不存在`
+                });
+                return;
+            }
+
             // 读取图片文件
             fs.readFile(imagePath, (err, data) => {
                 if (err) {
-                    console.error('读取图片文件失败:', err);
-                    res.status(500).json({ error: 'Failed to read image file' });
+                    console.error('[IMG] 读取图片文件失败:', err);
+                    res.status(500).json({ error: 'Failed to read image file', path: imagePath });
                     return;
                 }
-                
+
                 // 根据文件扩展名设置正确的 Content-Type
                 const ext = imagePath.split('.').pop()?.toLowerCase();
                 let contentType = 'image/jpeg'; // 默认
-                
+
                 switch (ext) {
                     case 'png':
                         contentType = 'image/png';
@@ -80,24 +91,25 @@ export function file(appExpress:express.Express,path:string){
                         contentType = 'image/bmp';
                         break;
                 }
-                
-                res.writeHead(200, { 
+
+                res.writeHead(200, {
                     'Content-Type': contentType,
                     'Cache-Control': 'public, max-age=31536000', // 缓存一年
                     'Content-Length': data.length
                 });
                 res.end(data);
+                console.log(`[IMG] 成功发送图片: ${name} (${contentType}, ${data.length} bytes)`);
             });
         } catch (error) {
-            console.error('图片服务错误:', error);
-            res.status(500).json({ error: 'Internal server error' });
+            console.error('[IMG] 图片服务错误:', error);
+            res.status(500).json({ error: 'Internal server error', details: error });
         }
     })
-    
+
     // 新增：图片元信息接口
     appExpress.get('/img/:name/info', async (req, res) => {
         const name = req.params.name;
-        
+
         try {
             // 尝试从 ImageManager 获取图片信息
             const imageInfo = imageManager.getImageInfo(name);
@@ -107,6 +119,7 @@ export function file(appExpress:express.Express,path:string){
                     data: {
                         hash: imageInfo.hash,
                         relativePath: imageInfo.relativePath,
+                        cachedPath: imageInfo.cachedPath,
                         size: imageInfo.size,
                         format: imageInfo.format,
                         createdAt: imageInfo.createdAt,
@@ -115,95 +128,58 @@ export function file(appExpress:express.Express,path:string){
                     }
                 });
             } else {
-                // 回退模式：从文件系统获取基本信息
-                const imagePath = join(path,'..','data',name);
-                if (fs.existsSync(imagePath)) {
-                    const stats = fs.statSync(imagePath);
+                // 通过哈希再尝试一次
+                const hash = name.split('.')[0];
+                const foundImageInfo = imageManager.getImageInfo(hash);
+                if (foundImageInfo) {
                     res.json({
                         success: true,
                         data: {
-                            name,
-                            size: stats.size,
-                            createdAt: stats.birthtime,
-                            lastUsed: stats.atime,
-                            mode: 'legacy'
+                            hash: foundImageInfo.hash,
+                            relativePath: foundImageInfo.relativePath,
+                            cachedPath: foundImageInfo.cachedPath,
+                            size: foundImageInfo.size,
+                            format: foundImageInfo.format,
+                            createdAt: foundImageInfo.createdAt,
+                            lastUsed: foundImageInfo.lastUsed
                         }
                     });
                 } else {
-                    res.status(404).json({ 
-                        success: false, 
-                        error: 'Image file not found' 
+                    res.status(404).json({
+                        success: false,
+                        error: 'Image file not found',
+                        name: name
                     });
                 }
             }
         } catch (error) {
             console.error('获取图片信息失败:', error);
-            res.status(500).json({ 
-                success: false, 
-                error: 'Failed to get image info' 
+            res.status(500).json({
+                success: false,
+                error: 'Failed to get image info',
+                details: error
             });
         }
     })
-    
+
     // 新增：图片缓存统计接口
     appExpress.get('/img/stats', async (req, res) => {
         try {
-            // 尝试从 ImageManager 获取统计信息
+            // 从 ImageManager 获取统计信息
             const stats = imageManager.getCacheStats();
-            if (stats && stats.totalImages > 0) {
-                res.json({
-                    success: true,
-                    data: {
-                        ...stats,
-                        mode: 'imagemanager'
-                    }
-                });
-            } else {
-                // 回退模式：扫描文件系统
-                const dataPath = join(path,'..','data');
-                if (fs.existsSync(dataPath)) {
-                    const files = fs.readdirSync(dataPath);
-                    let totalSize = 0;
-                    const formatCounts: Record<string, number> = {};
-                    
-                    for (const file of files) {
-                        const filePath = join(dataPath, file);
-                        const stats = fs.statSync(filePath);
-                        if (stats.isFile()) {
-                            totalSize += stats.size;
-                            const ext = file.split('.').pop()?.toLowerCase() || 'unknown';
-                            formatCounts[ext] = (formatCounts[ext] || 0) + 1;
-                        }
-                    }
-                    
-                    res.json({
-                        success: true,
-                        data: {
-                            totalImages: files.length,
-                            totalSize,
-                            formatCounts,
-                            averageSize: files.length > 0 ? totalSize / files.length : 0,
-                            mode: 'legacy'
-                        }
-                    });
-                } else {
-                    res.json({
-                        success: true,
-                        data: {
-                            totalImages: 0,
-                            totalSize: 0,
-                            formatCounts: {},
-                            averageSize: 0,
-                            mode: 'legacy'
-                        }
-                    });
+            res.json({
+                success: true,
+                data: {
+                    ...stats,
+                    mode: 'imagemanager'
                 }
-            }
+            });
         } catch (error) {
             console.error('获取图片统计失败:', error);
-            res.status(500).json({ 
-                success: false, 
-                error: 'Failed to get image stats' 
+            res.status(500).json({
+                success: false,
+                error: 'Failed to get image stats',
+                details: error
             });
         }
     })

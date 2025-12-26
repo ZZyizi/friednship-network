@@ -41,9 +41,9 @@ Object.keys(networkInterfaces).forEach(interfaceName => {
 });
 cors(app,Url)//编译环境测试 (解决跨域)
 
-export function startServer(port:number,cache_path:string) {
+export function startServer(port:number) {
     hello(app)
-    file(app,cache_path)
+    file(app)
     // 设置静态文件目录
 
     app.use(express.static(path.join(__dirname,'..', 'dist'), {

@@ -57,9 +57,25 @@ const mediaLi=ref<any>(null)//获取媒体li的ref
 
 onMounted(async () => {
   const key:string= router.currentRoute.value.query.key?router.currentRoute.value.query.key.toString():'all';
-  await mediaStore.routerUpdateFile(key)
-  await nextTick()
-  mediaStore.mediaLi=mediaLi.value
+  // 检查 Electron API 是否就绪
+  const isElectron: boolean = navigator.userAgent.includes("Electron")
+  if (isElectron && !window.file) {
+    console.warn('[data.vue] Electron API 未就绪，等待加载...')
+    // 等待一小段时间后重试
+    setTimeout(async () => {
+      if (window.file) {
+        await mediaStore.routerUpdateFile(key)
+        await nextTick()
+        mediaStore.mediaLi=mediaLi.value
+      } else {
+        console.error('[data.vue] Electron API 加载超时')
+      }
+    }, 100)
+  } else {
+    await mediaStore.routerUpdateFile(key)
+    await nextTick()
+    mediaStore.mediaLi=mediaLi.value
+  }
 })
 
 async function change(item:FileInter,status:number=0){

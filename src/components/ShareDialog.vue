@@ -83,7 +83,6 @@ const dialogVisible = computed({
 const loadingShare=ref(false)//数据互通表格加载中
 const settingsStore=useSettings()
 const networkStore=useNetwork()
-const { config,ipcRenderer } = window
 let port=ref(settingsStore.settings.port)
 let Ip= ref('127.0.0.1')
 let tableData = reactive([
@@ -93,16 +92,24 @@ let tableData = reactive([
 let shareData=reactive<shareDataType[]>([])
 
 onMounted(async ()=>{
-  Ip.value=await config.getConfig()
-  settingsStore.isOpen=await config.getStartServer()
+  // 检查 Electron API 是否就绪
+  if (!window.config || !window.ipcRenderer) {
+    console.warn('[ShareDialog] Electron API 未就绪')
+    return;
+  }
+
+  Ip.value=await window.config.getConfig()
+  settingsStore.isOpen=await window.config.getStartServer()
   addLocal()
   window.addEventListener("beforeunload", handleBeforeUnload,{ passive: false });//挂载方法
 })
 
 //监听主进程
-ipcRenderer.on("update-start-server", (_, data) => {
-  settingsStore.isOpen=data.isServerRunning
-});
+if (window.ipcRenderer) {
+  window.ipcRenderer.on("update-start-server", (_, data) => {
+    settingsStore.isOpen=data.isServerRunning
+  });
+}
 
 //刷新页面时候
 onBeforeUnmount(()=>{
@@ -117,7 +124,13 @@ watch(() => settingsStore.isOpen, () => {
 })
 
 async function send(port:number){
-  const data= await config.start(port)//启动web服务
+  // 检查 Electron API 是否就绪
+  if (!window.config) {
+    ElMessage.error('Electron API 未就绪')
+    return;
+  }
+
+  const data= await window.config.start(port)//启动web服务
   settingsStore.isOpen=data.success
   if(data.success){
     ElMessage.success(data.message)
@@ -150,7 +163,11 @@ function addLocal(){
 async function copy(row:any){
   //复制
   try {
-    await config.copy(row.value);
+    if (!window.config) {
+      ElMessage.error('Electron API 未就绪');
+      return;
+    }
+    await window.config.copy(row.value);
     ElMessage.success('复制成功');
   } catch (err) {
     ElMessage.error('复制失败');
@@ -160,7 +177,11 @@ async function copy(row:any){
 //关闭服务
 const handleBeforeUnload = async () => {
   if (settingsStore.isOpen) {
-    const data= await config.start(0)
+    if (!window.config) {
+      console.warn('[ShareDialog] Electron API 未就绪，无法关闭服务');
+      return;
+    }
+    const data= await window.config.start(0)
     settingsStore.isOpen=data.success
   }
 }
@@ -169,7 +190,12 @@ async function getShare(){
   loadingShare.value=true
   const shareDataLocal=localStorage.getItem(`shareData`)?JSON.parse(localStorage.getItem(`shareData`)||'[]'):[]
   shareData.splice(0,shareData.length)
-  const data:{ip:string,mac:string}[]=await config.getLoadNet()
+  if (!window.config) {
+    ElMessage.error('Electron API 未就绪');
+    loadingShare.value=false
+    return;
+  }
+  const data:{ip:string,mac:string}[]=await window.config.getLoadNet()
   data.forEach((item, index) => {
     // 查找是否在 shareDataLocal 里已有相同 mac
     const oldDevice = shareDataLocal.find((d:shareDataType) => d.mac === item.mac);

@@ -8,6 +8,7 @@ import {fileURLToPath} from "node:url";
 import AutoImport from 'unplugin-auto-import/vite'
 import Components from 'unplugin-vue-components/vite'
 import { ElementPlusResolver } from 'unplugin-vue-components/resolvers'
+import builtinModules from 'builtin-modules'
 // 获取网络接口信息
 const networkInterfaces = os.networkInterfaces();
 let Ip=""
@@ -48,7 +49,7 @@ export default defineConfig({
     target: 'esnext', // 目标环境为最新版本的 JavaScript
   },
   server: {
-    port: 8080,
+    port: 8081,
     host: Ip
   },
   preview:{
@@ -64,7 +65,7 @@ export default defineConfig({
           build: {
             outDir: 'dist',
             rollupOptions: {
-              external: ['electron'],
+              external: ['electron', 'better-sqlite3', ...builtinModules],
               output: {
                 format: 'es'
               }
@@ -72,6 +73,9 @@ export default defineConfig({
           },
           esbuild: {
             target: 'node18'
+          },
+          optimizeDeps: {
+            exclude: ['better-sqlite3']
           }
         }
       },
